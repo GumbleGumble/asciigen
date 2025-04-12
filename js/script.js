@@ -9,7 +9,8 @@ let renderTarget;
 let downscaleCanvas;
 let downscaleCtx;
 let pixelData;
-const ASCII_CHARS_MAP = { // Added from main.js for charset switching
+const ASCII_CHARS_MAP = {
+	// Added from main.js for charset switching
 	dense: "@%#*+=-:. ".split("").reverse().join(""),
 	simple: "#=-. ".split("").reverse().join(""),
 	blocks: "█▓▒░ ".split("").reverse().join(""),
@@ -20,24 +21,19 @@ const ASCII_CHARS_MAP = { // Added from main.js for charset switching
 			.join(""),
 	binary: "10".split("").reverse().join(""),
 };
-let asciiChars = ASCII_CHARS_MAP["dense"]; // Default character set
+let asciiChars = ASCII_CHARS_MAP.dense; // Default character set
 let isPaused = false;
-let currentAnimationType = "lissajous"; // Default to lissajous as per HTML
-let animationFrameId;
-// Removed activeAnimationSetup, activeAnimationUpdate, activeAnimationCleanup - will use module functions directly
-let activeControls = [];
+let animationFrameId; // Keep as let, it's reassigned
+let currentAnimationType = "lissajous"; // Default animation
+const lastTime = 0; // For delta time calculation (currently unused, but kept for potential future use)
 
-const display = document.getElementById("asciiDisplay");
-const controlsContainer = document.getElementById("controlsContainer");
-const pausePlayButton = document.getElementById("pausePlayButton");
-const randomizeButton = document.getElementById("randomizeButton");
-
-// UI Elements Map (Ensure all IDs match index.html)
+// --- DOM Elements ---
 const uiElements = {
-	animationType: document.getElementById("animationType"), // Matches <select id="animation-select"> in main.js version? No, use 'animationType' from previous script.js
-	resolution: document.getElementById("resolution-slider"), // Use ID from main.js version
-	resolutionValue: document.getElementById("resolution-value"), // Use ID from main.js version
-	charset: document.getElementById("charset-select"), // Use ID from main.js version
+	display: document.getElementById("asciiDisplay"),
+	displayContainer: document.getElementById("ascii-output-container"),
+	resolution: document.getElementById("resolution-slider"),
+	resolutionValue: document.getElementById("resolution-value"),
+	charset: document.getElementById("charset-select"),
 	brightness: document.getElementById("brightness-slider"), // Use ID from main.js version
 	brightnessValue: document.getElementById("brightness-value"), // Added for consistency
 	contrast: document.getElementById("contrast-slider"), // Use ID from main.js version
@@ -51,87 +47,123 @@ const uiElements = {
 	),
 
 	// Lighting Controls
-	ambientIntensity: document.getElementById('ambient-intensity-slider'),
-	ambientIntensityValue: document.getElementById('ambient-intensity-value'),
-	directionalIntensity: document.getElementById('directional-intensity-slider'),
-	directionalIntensityValue: document.getElementById('directional-intensity-value'),
-	lightPosX: document.getElementById('light-pos-x-slider'),
-	lightPosXValue: document.getElementById('light-pos-x-value'),
-	lightPosY: document.getElementById('light-pos-y-slider'),
-	lightPosYValue: document.getElementById('light-pos-y-value'),
-	lightPosZ: document.getElementById('light-pos-z-slider'),
-	lightPosZValue: document.getElementById('light-pos-z-value'),
+	ambientIntensity: document.getElementById("ambient-intensity-slider"),
+	ambientIntensityValue: document.getElementById("ambient-intensity-value"),
+	directionalIntensity: document.getElementById("directional-intensity-slider"),
+	directionalIntensityValue: document.getElementById(
+		"directional-intensity-value",
+	),
+	lightPosX: document.getElementById("light-pos-x-slider"),
+	lightPosXValue: document.getElementById("light-pos-x-value"),
+	lightPosY: document.getElementById("light-pos-y-slider"),
+	lightPosYValue: document.getElementById("light-pos-y-value"),
+	lightPosZ: document.getElementById("light-pos-z-slider"),
+	lightPosZValue: document.getElementById("light-pos-z-value"),
 
-	// Torus Controls (Ensure IDs match index.html from main.js version)
+	// Animation Type Selector
+	animationType: document.getElementById("animation-select"),
+
+	// Control Buttons
+	pausePlayButton: document.getElementById("pause-play-button"),
+	randomizeButton: document.getElementById("randomize-button"),
+
+	// Animation Control Sections (Containers)
 	torusControls: document.getElementById("torus-controls"),
-	torusSpeed: document.getElementById("torus-speed-slider"), // Use ID from main.js version
-	torusSpeedValue: document.getElementById("torus-speed-value"), // Added
-	torusThickness: document.getElementById("torus-thickness-slider"), // Use ID from main.js version
-	torusThicknessValue: document.getElementById("torus-thickness-value"), // Use ID from main.js version
-	torusMajorRadius: document.getElementById("torusMajorRadius"),
-	torusMajorRadiusValue: document.getElementById("torusMajorRadiusValue"),
-	torusRotationAxis: document.getElementById("torusRotationAxis"),
-
-	// Noise Controls (Ensure IDs match index.html from main.js version)
 	noiseControls: document.getElementById("noise-controls"),
-	noiseScale: document.getElementById("noise-scale-slider"), // Use ID from main.js version
-	noiseScaleValue: document.getElementById("noise-scale-value"), // Added
-	noiseSpeed: document.getElementById("noise-speed-slider"), // Use ID from main.js version
-	noiseSpeedValue: document.getElementById("noise-speed-value"), // Added
-	noiseBrightness: document.getElementById("noise-brightness-slider"), // Use ID from main.js version
-	noiseBrightnessValue: document.getElementById("noise-brightness-value"), // Added
-
-	// Particle Controls (Ensure IDs match index.html from main.js version)
-	particleControls: document.getElementById("particles-controls"),
-	particleCount: document.getElementById("particles-count-slider"), // Use ID from main.js version
-	particleCountValue: document.getElementById("particles-count-value"), // Use ID from main.js version
-	particleSize: document.getElementById("particles-size-slider"), // Use ID from main.js version
-	particleSizeValue: document.getElementById("particle-size-value"), // Added
-	particleSpeed: document.getElementById("particles-speed-slider"), // Use ID from main.js version
-	particleSpeedValue: document.getElementById("particle-speed-value"), // Added
-	particleLifespan: document.getElementById("particles-lifespan-slider"), // Use ID from main.js version
-	particleLifespanValue: document.getElementById("particle-lifespan-value"), // Added
-	emitterShape: document.getElementById("particles-emitter-shape"), // Use ID from main.js version
-	emitterSize: document.getElementById("particles-emitter-size-slider"), // Use ID from main.js version
-	emitterSizeValue: document.getElementById("particle-emitter-size-value"), // Added
-	forceType: document.getElementById("particles-force-type"), // Use ID from main.js version
-	forceStrength: document.getElementById("particles-force-strength-slider"), // Use ID from main.js version
-	forceStrengthValue: document.getElementById("particle-force-strength-value"), // Added
-
-	// Kaleidoscope Controls (Ensure IDs match index.html from main.js version)
+	particlesControls: document.getElementById("particles-controls"),
 	kaleidoscopeControls: document.getElementById("kaleidoscope-controls"),
-	kaleidoscopeSegments: document.getElementById("kaleidoscope-segments-slider"), // Use ID from main.js version
+	morphControls: document.getElementById("morph-controls"),
+	metaballsControls: document.getElementById("metaballs-controls"),
+	lissajousControls: document.getElementById("lissajous-controls"),
+
+	// Torus Controls
+	torusSpeed: document.getElementById("torus-speed-slider"),
+	torusSpeedValue: document.getElementById("torus-speed-value"),
+	torusThickness: document.getElementById("torus-thickness-slider"),
+	torusThicknessValue: document.getElementById("torus-thickness-value"),
+	torusMajorRadius: document.getElementById("torusMajorRadius"), // Slider for major radius
+	torusMajorRadiusValue: document.getElementById("torusMajorRadiusValue"), // Span for major radius value
+	torusRoughness: document.getElementById("torus-roughness-slider"), // Added
+	torusRoughnessValue: document.getElementById("torus-roughness-value"), // Added
+	torusMetalness: document.getElementById("torus-metalness-slider"), // Added
+	torusMetalnessValue: document.getElementById("torus-metalness-value"), // Added
+	torusRotationAxis: document.getElementById("torus-rotation-axis"), // Added
+
+	// Noise Controls
+	noiseScale: document.getElementById("noise-scale-slider"),
+	noiseScaleValue: document.getElementById("noise-scale-value"),
+	noiseSpeed: document.getElementById("noise-speed-slider"),
+	noiseSpeedValue: document.getElementById("noise-speed-value"),
+	noiseBrightness: document.getElementById("noise-brightness-slider"),
+	noiseBrightnessValue: document.getElementById("noise-brightness-value"),
+
+	// Particle Controls
+	particleCount: document.getElementById("particles-count-slider"),
+	particleCountValue: document.getElementById("particles-count-value"),
+	particleSize: document.getElementById("particles-size-slider"),
+	particleSizeValue: document.getElementById("particle-size-value"),
+	particleSpeed: document.getElementById("particles-speed-slider"),
+	particleSpeedValue: document.getElementById("particles-speed-value"),
+	particleLifespan: document.getElementById("particles-lifespan-slider"),
+	particleLifespanValue: document.getElementById("particles-lifespan-value"),
+	emitterShape: document.getElementById("particles-emitter-shape"),
+	emitterSize: document.getElementById("particles-emitter-size-slider"),
+	particleEmitterSizeValue: document.getElementById(
+		"particle-emitter-size-value",
+	),
+	forceType: document.getElementById("particles-force-type"),
+	forceStrength: document.getElementById("particles-force-strength-slider"),
+	particleForceStrengthValue: document.getElementById(
+		"particle-force-strength-value",
+	),
+
+	// Kaleidoscope Controls
+	kaleidoscopeSegments: document.getElementById("kaleidoscope-segments-slider"),
 	kaleidoscopeSegmentsValue: document.getElementById(
 		"kaleidoscope-segments-value",
-	), // Use ID from main.js version
-	kaleidoscopeBaseNoiseScale: document.getElementById(
+	),
+	kaleidoscopeNoiseScale: document.getElementById(
 		"kaleidoscope-noise-scale-slider",
-	), // Use ID from main.js version
-	kaleidoscopeBaseNoiseScaleValue: document.getElementById(
+	),
+	kaleidoscopeNoiseScaleValue: document.getElementById(
 		"kaleidoscope-noise-scale-value",
-	), // Added
-	kaleidoscopeBaseNoiseSpeed: document.getElementById(
+	),
+	kaleidoscopeNoiseSpeed: document.getElementById(
 		"kaleidoscope-noise-speed-slider",
-	), // Use ID from main.js version
-	kaleidoscopeBaseNoiseSpeedValue: document.getElementById(
+	),
+	kaleidoscopeNoiseSpeedValue: document.getElementById(
 		"kaleidoscope-noise-speed-value",
-	), // Added
-	kaleidoscopeBaseNoiseBrightness: document.getElementById(
+	),
+	kaleidoscopeNoiseBrightness: document.getElementById(
 		"kaleidoscope-noise-brightness-slider",
-	), // Use ID from main.js version
-	kaleidoscopeBaseNoiseBrightnessValue: document.getElementById(
+	),
+	kaleidoscopeNoiseBrightnessValue: document.getElementById(
 		"kaleidoscope-noise-brightness-value",
-	), // Added
+	),
 
-	// Morph Controls (Ensure IDs match index.html from main.js version)
-	morphControls: document.getElementById("morph-controls"),
-	morphSpeed: document.getElementById("morph-speed-slider"), // Use ID from main.js version
-	morphSpeedValue: document.getElementById("morph-speed-value"), // Added
-	morphRotationSpeed: document.getElementById("morph-rotation-slider"), // Use ID from main.js version
-	morphRotationSpeedValue: document.getElementById("morph-rotation-speed-value"), // Added
+	// Morph Controls
+	morphSpeed: document.getElementById("morph-speed-slider"),
+	morphSpeedValue: document.getElementById("morph-speed-value"),
+	morphRotationSpeed: document.getElementById("morph-rotation-slider"),
+	morphRotationSpeedValue: document.getElementById(
+		"morph-rotation-speed-value",
+	),
+	morphComplexity: document.getElementById("morph-complexity-slider"), // Uncommented
+	morphComplexityValue: document.getElementById("morphComplexityValue"), // Uncommented
 
-	// Lissajous Controls (Ensure IDs match index.html from main.js version)
-	lissajousControls: document.getElementById("lissajous-controls"),
+	// Metaballs Controls
+	metaballsCount: document.getElementById("metaballs-count-slider"),
+	metaballsCountValue: document.getElementById("mb-count-value"),
+	metaballsSize: document.getElementById("metaballs-size-slider"),
+	metaballsSizeValue: document.getElementById("mb-size-value"),
+	metaballsSpeed: document.getElementById("metaballs-speed-slider"),
+	metaballsSpeedValue: document.getElementById("mb-speed-value"),
+	metaballsThreshold: document.getElementById("metaballs-threshold-slider"),
+	metaballsThresholdValue: document.getElementById("mb-threshold-value"),
+	metaballsColor: document.getElementById("metaballs-color-slider"),
+	metaballsColorValue: document.getElementById("mb-color-value"),
+
+	// Lissajous Controls
 	lissajousA: document.getElementById("lissajous-a-slider"), // Use ID from main.js version
 	lissajousAValue: document.getElementById("lj-a-value"), // Use ID from main.js version
 	lissajousB: document.getElementById("lissajous-b-slider"), // Use ID from main.js version
@@ -142,10 +174,10 @@ const uiElements = {
 	lissajousAmpAValue: document.getElementById("lj-ampA-value"), // Use ID from main.js version
 	lissajousAmpB: document.getElementById("lissajous-ampB-slider"), // Use ID from main.js version
 	lissajousAmpBValue: document.getElementById("lj-ampB-value"), // Use ID from main.js version
-	lissajousDrawSpeed: document.getElementById("lissajous-speed-slider"), // Use ID from main.js version ('lissajous-speed-slider')
-	lissajousDrawSpeedValue: document.getElementById("lj-speed-value"), // Added
-	lissajousPointCount: document.getElementById("lissajous-points-slider"), // Use ID from main.js version
-	lissajousPointCountValue: document.getElementById("lj-points-value"), // Use ID from main.js version
+	lissajousSpeed: document.getElementById("lissajous-speed-slider"), // Use ID from main.js version ('lissajous-speed-slider')
+	lissajousSpeedValue: document.getElementById("lj-speed-value"), // Added
+	lissajousPoints: document.getElementById("lissajous-points-slider"), // Use ID from main.js version
+	lissajousPointsValue: document.getElementById("lj-points-value"), // Use ID from main.js version
 };
 
 // --- Global Animation Objects (used by modules) ---
@@ -156,6 +188,8 @@ const torusControls = {
 	sliderSpeed: uiElements.torusSpeed,
 	sliderThickness: uiElements.torusThickness,
 	valueThickness: uiElements.torusThicknessValue,
+	sliderRoughness: uiElements.torusRoughness, // Added
+	sliderMetalness: uiElements.torusMetalness, // Added
 };
 const noiseControls = {
 	// Match structure expected by noise.js
@@ -178,16 +212,28 @@ const particlesControls = {
 const kaleidoscopeControls = {
 	// Match structure expected by kaleidoscope.js
 	sliderSegments: uiElements.kaleidoscopeSegments,
-	valueSegments: uiElements.kaleidoscopeSegmentsValue,
-	sliderNoiseScale: uiElements.kaleidoscopeBaseNoiseScale,
-	sliderNoiseSpeed: uiElements.kaleidoscopeBaseNoiseSpeed,
-	sliderNoiseBrightness: uiElements.kaleidoscopeBaseNoiseBrightness,
+	sliderNoiseScale: uiElements.kaleidoscopeNoiseScale,
+	sliderNoiseSpeed: uiElements.kaleidoscopeNoiseSpeed,
+	sliderNoiseBrightness: uiElements.kaleidoscopeNoiseBrightness,
 };
 const morphControls = {
 	// Match structure expected by morph.js
-	sliderMorphSpeed: uiElements.morphSpeed, // ID mismatch? main.js uses morph-speed-slider
-	sliderRotationSpeed: uiElements.morphRotationSpeed, // ID mismatch? main.js uses morph-rotation-slider
-	// sliderComplexity is missing in script.js uiElements but used in morph.js
+	sliderMorphSpeed: uiElements.morphSpeed,
+	sliderRotationSpeed: uiElements.morphRotationSpeed,
+	sliderComplexity: uiElements.morphComplexity, // Uncommented
+};
+const metaballsControls = {
+	// Match structure expected by metaballs.js
+	sliderCount: uiElements.metaballsCount,
+	valueCount: uiElements.metaballsCountValue,
+	sliderSize: uiElements.metaballsSize,
+	valueSize: uiElements.metaballsSizeValue,
+	sliderSpeed: uiElements.metaballsSpeed,
+	valueSpeed: uiElements.metaballsSpeedValue, // Added for consistency
+	sliderThreshold: uiElements.metaballsThreshold,
+	valueThreshold: uiElements.metaballsThresholdValue,
+	sliderColor: uiElements.metaballsColor,
+	valueColor: uiElements.metaballsColorValue, // Added for consistency
 };
 const lissajousControls = {
 	// Match structure expected by lissajous.js
@@ -201,36 +247,31 @@ const lissajousControls = {
 	valueAmpA: uiElements.lissajousAmpAValue,
 	sliderAmpB: uiElements.lissajousAmpB,
 	valueAmpB: uiElements.lissajousAmpBValue,
-	sliderSpeed: uiElements.lissajousDrawSpeed,
-	sliderPoints: uiElements.lissajousPointCount,
-	valuePoints: uiElements.lissajousPointCountValue,
+	sliderSpeed: uiElements.lissajousSpeed, // Renamed from sliderDrawSpeed
+	valueSpeed: uiElements.lissajousSpeedValue, // Added
+	sliderPoints: uiElements.lissajousPoints, // Renamed from sliderPointCount
+	valuePoints: uiElements.lissajousPointsValue, // Renamed from sliderPointCountValue
 };
-// Metaballs controls need to be added if integrating metaballs.js
 
 // --- Initialization ---
-
 function init() {
-	// Ensure display container is ready
-	const displayContainer = document.getElementById('ascii-output-container');
-	if (!display || !displayContainer || !displayContainer.clientWidth || !displayContainer.clientHeight) {
-		console.error("Display area not ready or has zero dimensions.");
-		setTimeout(init, 100); // Retry after 100ms
-		return;
-	}
+	console.log("Initializing ASCII Animator...");
 
-	// Initialize Three.js
+	// Basic Three.js Setup
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0x000000); // Black background
 	clock = new THREE.Clock();
 
-	const aspect = display.clientWidth / display.clientHeight;
+	// Camera Setup (Perspective)
+	const aspect = 16 / 9; // Initial aspect ratio, will be updated
 	camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-	// Initial zoom setting (can be overridden by animation switch)
-	camera.position.z = Number.parseFloat(uiElements.zoom.value) || 15;
+	camera.position.z = Number.parseFloat(uiElements.zoom.value) || 15; // Initial zoom from slider
 
-	// Renderer setup (use a canvas that's not added to DOM directly)
-	renderer = new THREE.WebGLRenderer({ antialias: true });
-	renderer.setSize(512, 512); // Initial fixed internal size, adjust if needed
+	// Renderer Setup
+	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+	renderer.setSize(512, 512); // Fixed internal size, adjust if needed
+	renderer.setPixelRatio(window.devicePixelRatio);
+	// Don't add renderer.domElement to the document body
 
 	// Initial Render Target and Downscale Canvas Setup
 	setupRenderTargetAndCanvas(); // Depends on renderer being initialized
@@ -241,7 +282,8 @@ function init() {
 	// Initial UI Update
 	updateAllValueDisplays();
 	// Set initial charset based on dropdown
-	asciiChars = ASCII_CHARS_MAP[uiElements.charset.value] || ASCII_CHARS_MAP.dense;
+	asciiChars =
+		ASCII_CHARS_MAP[uiElements.charset.value] || ASCII_CHARS_MAP.dense;
 	updateUIForAnimationType(currentAnimationType);
 
 	// Start
@@ -249,71 +291,87 @@ function init() {
 	animate();
 }
 
+// --- Canvas and Render Target Setup ---
 function setupRenderTargetAndCanvas() {
-	if (!renderer || !display) return; // Need renderer and display element
-
-	const scale = Number.parseFloat(uiElements.renderTargetResolution.value);
-	const baseWidth = 512; // Maintain a base internal resolution logic if desired
-	const baseHeight = 512;
-	const renderWidth = Math.max(1, Math.floor(baseWidth * scale));
-	const renderHeight = Math.max(1, Math.floor(baseHeight * scale));
-
-	// Update renderer size (internal buffer)
-	renderer.setSize(renderWidth, renderHeight, false); // Don't update style
-
-	// Dispose old render target if it exists
-	if (renderTarget) {
-		renderTarget.dispose();
+	const display = uiElements.display;
+	const container = uiElements.displayContainer;
+	if (!container || !display) {
+		console.error("Display elements not found!");
+		return;
 	}
-	renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
 
-	// --- ASCII Dimension and Font Size Calculation ---
-	const displayContainer = document.getElementById('ascii-output-container');
-	const containerWidth = displayContainer.clientWidth;
-	const containerHeight = displayContainer.clientHeight;
+	const containerWidth = container.clientWidth;
+	const containerHeight = container.clientHeight;
 
 	if (containerWidth <= 0 || containerHeight <= 0) {
-		console.warn("Container dimensions are zero, cannot calculate ASCII size.");
-		return; // Avoid division by zero
+		console.warn("Container dimensions not available yet, deferring setup.");
+		requestAnimationFrame(setupRenderTargetAndCanvas); // Try again
+		return;
 	}
 
-	const asciiWidth = Number.parseInt(uiElements.resolution.value, 10);
-	const charAspectRatio = 0.6; // Adjust this based on the font ('Courier Prime' might be closer to 0.6)
+	// 1. Determine ASCII Grid Size (based on resolution slider and container aspect ratio)
+	const asciiWidth = Number.parseInt(uiElements.resolution.value);
+	const charAspectRatio = 0.6; // Estimate: Adjust based on font
+	const calculatedHeight = Math.max(
+		1,
+		Math.round(
+			(containerHeight / containerWidth) * asciiWidth * charAspectRatio,
+		),
+	);
 
-	// Calculate height based on container aspect ratio to fill vertically
-	const calculatedHeight = Math.max(1, Math.round((containerHeight / containerWidth) * asciiWidth / charAspectRatio));
+	// 2. Determine Render Target Size (based on ASCII grid and scale factor)
+	const renderScale = Number.parseFloat(
+		uiElements.renderTargetResolution.value,
+	);
+	const renderWidth = Math.max(1, Math.floor(asciiWidth * renderScale));
+	const renderHeight = Math.max(1, Math.floor(calculatedHeight * renderScale));
 
-	// Calculate font size needed for the width to fit
-	// Subtracting a small amount (e.g., 1px) can sometimes help prevent wrapping issues
-	const calculatedFontSize = Math.max(1, (containerWidth - 1) / asciiWidth);
-
-	// Check if the calculated height * font size exceeds container height
-	if (calculatedHeight * calculatedFontSize > containerHeight) {
-		// If it exceeds, recalculate based on height constraint
-		const newFontSize = Math.max(1, containerHeight / calculatedHeight);
-		display.style.fontSize = `${newFontSize}px`;
-		// Optional: Recalculate width based on new font size? Might distort aspect ratio.
-		// const newAsciiWidth = Math.floor(containerWidth / newFontSize);
-		// uiElements.resolution.value = newAsciiWidth; // Update slider? Risky.
-		// uiElements.resolutionValue.textContent = newAsciiWidth;
-		// downscaleCanvas.width = newAsciiWidth;
-	} else {
-		display.style.fontSize = `${calculatedFontSize}px`;
+	// 3. Setup Render Target
+	if (!renderTarget || renderTarget.width !== renderWidth || renderTarget.height !== renderHeight) {
+		if (renderTarget) renderTarget.dispose(); // Dispose old one if exists
+		renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+			minFilter: THREE.LinearFilter,
+			magFilter: THREE.NearestFilter,
+			format: THREE.RGBAFormat,
+			type: THREE.UnsignedByteType, // Use UnsignedByteType for readRenderTargetPixels
+		});
+		console.log(`Render Target resized to: ${renderWidth}x${renderHeight}`);
 	}
 
-	// Set downscale canvas dimensions
+	// 4. Setup Downscale Canvas (matches ASCII grid size)
 	if (!downscaleCanvas) {
-		downscaleCanvas = document.createElement('canvas');
-		downscaleCtx = downscaleCanvas.getContext('2d', { willReadFrequently: true });
-		pixelData = new Uint8ClampedArray(asciiWidth * calculatedHeight * 4); // Allocate buffer
-	} else if (downscaleCanvas.width !== asciiWidth || downscaleCanvas.height !== calculatedHeight) {
-		 pixelData = new Uint8ClampedArray(asciiWidth * calculatedHeight * 4); // Reallocate if size changed
+		downscaleCanvas = document.createElement("canvas");
+		downscaleCtx = downscaleCanvas.getContext("2d", {
+			willReadFrequently: true,
+		});
+	}
+	// Resize downscale canvas if needed
+	if (downscaleCanvas.width !== asciiWidth || downscaleCanvas.height !== calculatedHeight) {
+		downscaleCanvas.width = asciiWidth;
+		downscaleCanvas.height = calculatedHeight;
+		// Reallocate pixelData buffer if size changed
+		pixelData = new Uint8ClampedArray(asciiWidth * calculatedHeight * 4);
+		console.log(`Downscale Canvas resized to: ${asciiWidth}x${calculatedHeight}`);
 	}
 
-	downscaleCanvas.width = asciiWidth;
-	downscaleCanvas.height = calculatedHeight; // Use calculated height
 
-	console.log(`Container: ${containerWidth}x${containerHeight}, RenderTarget: ${renderWidth}x${renderHeight}, ASCII Grid: ${asciiWidth}x${calculatedHeight}, Font Size: ${display.style.fontSize}`);
+	// 5. Adjust Display Font Size to fit container
+	// Calculate font size based on container width and ascii width
+	const calculatedFontSizeW = containerWidth / asciiWidth;
+	// Calculate font size based on container height and ascii height (considering line height)
+	const lineHeight = 1.0; // Match CSS line-height
+	const calculatedFontSizeH = containerHeight / (calculatedHeight * lineHeight);
+	// Use the smaller font size to ensure the grid fits both horizontally and vertically
+	const calculatedFontSize = Math.min(calculatedFontSizeW, calculatedFontSizeH);
+
+	// Apply minimum font size if needed
+	const minFontSize = 2; // Prevent excessively small fonts
+	display.style.fontSize = `${Math.max(minFontSize, calculatedFontSize)}px`;
+	display.style.lineHeight = `${lineHeight}`; // Ensure line height matches calculation
+
+	console.log(
+		`Container: ${containerWidth}x${containerHeight}, RenderTarget: ${renderWidth}x${renderHeight}, ASCII Grid: ${asciiWidth}x${calculatedHeight}, Font Size: ${display.style.fontSize}`,
+	);
 
 	// Update camera aspect ratio based on render target, not container
 	if (camera) {
@@ -323,26 +381,32 @@ function setupRenderTargetAndCanvas() {
 }
 
 // --- Event Listeners ---
-
 function setupEventListeners() {
 	// General Controls
 	uiElements.resolution.addEventListener("input", (e) => {
 		uiElements.resolutionValue.textContent = e.target.value;
-		setupRenderTargetAndCanvas(); // ASCII resolution affects downscale canvas
+		// Debounce or directly call setup? Direct call for now.
+		setupRenderTargetAndCanvas();
 	});
 	uiElements.charset.addEventListener("change", (e) => {
-		asciiChars = ASCII_CHARS_MAP[e.target.value] || ASCII_CHARS_MAP.dense; // Update character set
-		console.log("Charset changed to:", e.target.value);
+		asciiChars = ASCII_CHARS_MAP[e.target.value] || ASCII_CHARS_MAP.dense;
 	});
 	uiElements.brightness.addEventListener("input", (e) => {
-		if (uiElements.brightnessValue) uiElements.brightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(2);
+		uiElements.brightnessValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(2);
+		// Brightness logic handled in renderToAscii
 	});
 	uiElements.contrast.addEventListener("input", (e) => {
-		if (uiElements.contrastValue) uiElements.contrastValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
+		uiElements.contrastValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Contrast logic handled in renderToAscii
 	});
 	uiElements.zoom.addEventListener("input", (e) => {
 		const zoomValue = Number.parseFloat(e.target.value);
-		if (uiElements.zoomValue) uiElements.zoomValue.textContent = zoomValue.toFixed(1);
+		if (uiElements.zoomValue)
+			uiElements.zoomValue.textContent = zoomValue.toFixed(1);
 		if (camera) {
 			camera.position.z = zoomValue;
 		}
@@ -358,35 +422,35 @@ function setupEventListeners() {
 	});
 
 	// Lighting Controls
-	uiElements.ambientIntensity.addEventListener('input', (e) => {
+	uiElements.ambientIntensity.addEventListener("input", (e) => {
 		const intensity = Number.parseFloat(e.target.value);
 		uiElements.ambientIntensityValue.textContent = intensity.toFixed(2);
 		if (animationObjects.ambientLight) {
 			animationObjects.ambientLight.intensity = intensity;
 		}
 	});
-	uiElements.directionalIntensity.addEventListener('input', (e) => {
+	uiElements.directionalIntensity.addEventListener("input", (e) => {
 		const intensity = Number.parseFloat(e.target.value);
 		uiElements.directionalIntensityValue.textContent = intensity.toFixed(1);
 		if (animationObjects.directionalLight) {
 			animationObjects.directionalLight.intensity = intensity;
 		}
 	});
-	uiElements.lightPosX.addEventListener('input', (e) => {
+	uiElements.lightPosX.addEventListener("input", (e) => {
 		const value = Number.parseFloat(e.target.value);
 		uiElements.lightPosXValue.textContent = value.toFixed(1);
 		if (animationObjects.directionalLight) {
 			animationObjects.directionalLight.position.x = value;
 		}
 	});
-	uiElements.lightPosY.addEventListener('input', (e) => {
+	uiElements.lightPosY.addEventListener("input", (e) => {
 		const value = Number.parseFloat(e.target.value);
 		uiElements.lightPosYValue.textContent = value.toFixed(1);
 		if (animationObjects.directionalLight) {
 			animationObjects.directionalLight.position.y = value;
 		}
 	});
-	uiElements.lightPosZ.addEventListener('input', (e) => {
+	uiElements.lightPosZ.addEventListener("input", (e) => {
 		const value = Number.parseFloat(e.target.value);
 		uiElements.lightPosZValue.textContent = value.toFixed(1);
 		if (animationObjects.directionalLight) {
@@ -399,217 +463,400 @@ function setupEventListeners() {
 		switchAnimation(e.target.value);
 	});
 
-	// Action Buttons
-	pausePlayButton.addEventListener("click", togglePause);
-	randomizeButton.addEventListener("click", randomizeParameters);
-
-	// --- Animation Specific Listeners ---
-	// These might be handled within the animation modules themselves (like in lissajous.js)
-	// If modules don't handle listeners, add them here. Example for Torus:
-	uiElements.torusSpeed.addEventListener("input", (e) => {
-		if (uiElements.torusSpeedValue) uiElements.torusSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(2);
-		window.TORUS_ANIMATION?.handleSpeedChange?.();
-	});
-	uiElements.torusThickness.addEventListener("input", (e) => {
-		uiElements.torusThicknessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
-		// This might require restarting the animation or calling a specific handler in the module
-		// Change to an optional chain.
-		window.TORUS_ANIMATION?.handleThicknessChange?.();
-		// Fallback logic removed for brevity, assuming modules handle changes or restarts are acceptable
-	});
-	uiElements.torusMajorRadius.addEventListener("input", (e) => {
-		// uiElements.torusMajorRadiusValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // If value display exists
-		// Requires restart or specific handler
-		// switchAnimation(currentAnimationType); // Example restart
-	});
-	uiElements.torusRotationAxis.addEventListener("change", (e) => {
-		// Value read directly in update loop or handled by module
-	});
-
-	// Add listeners for other controls if not handled by modules...
-	// Example: Particle count often requires restart
-	uiElements.particleCount.addEventListener("input", (e) => {
-		uiElements.particleCountValue.textContent = e.target.value;
-		// Change to an optional chain.
-		window.PARTICLES_ANIMATION?.handleCountChange?.();
-	});
-	uiElements.particleSize.addEventListener('input', (e) => {
-		if (uiElements.particleSizeValue) uiElements.particleSizeValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.PARTICLES_ANIMATION?.handleSizeChange?.();
-	});
-	uiElements.particleSpeed.addEventListener('input', (e) => {
-		if (uiElements.particleSpeedValue) uiElements.particleSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.PARTICLES_ANIMATION?.handleSpeedChange?.();
-	});
-	uiElements.particleLifespan.addEventListener('input', (e) => {
-		if (uiElements.particleLifespanValue) uiElements.particleLifespanValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.PARTICLES_ANIMATION?.handleLifespanChange?.();
-	});
-	uiElements.particleEmitterSize.addEventListener('input', (e) => {
-		if (uiElements.particleEmitterSizeValue) uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.PARTICLES_ANIMATION?.handleEmitterSizeChange?.();
-	});
-	uiElements.particleForceStrength.addEventListener('input', (e) => {
-		if (uiElements.particleForceStrengthValue) uiElements.particleForceStrengthValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.PARTICLES_ANIMATION?.handleForceStrengthChange?.();
-	});
-
-	// Noise Controls
-	uiElements.noiseScale.addEventListener('input', (e) => {
-		if (uiElements.noiseScaleValue) uiElements.noiseScaleValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.NOISE_ANIMATION?.handleScaleChange?.();
-	});
-	uiElements.noiseSpeed.addEventListener('input', (e) => {
-		if (uiElements.noiseSpeedValue) uiElements.noiseSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.NOISE_ANIMATION?.handleSpeedChange?.();
-	});
-	uiElements.noiseBrightness.addEventListener('input', (e) => {
-		if (uiElements.noiseBrightnessValue) uiElements.noiseBrightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.NOISE_ANIMATION?.handleBrightnessChange?.();
-	});
-
-	// Kaleidoscope Controls
-	uiElements.kaleidoscopeNoiseScale.addEventListener('input', (e) => {
-		if (uiElements.kaleidoscopeNoiseScaleValue) uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.KALEIDOSCOPE_ANIMATION?.handleNoiseScaleChange?.();
-	});
-	uiElements.kaleidoscopeNoiseSpeed.addEventListener('input', (e) => {
-		if (uiElements.kaleidoscopeNoiseSpeedValue) uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.KALEIDOSCOPE_ANIMATION?.handleNoiseSpeedChange?.();
-	});
-	uiElements.kaleidoscopeNoiseBrightness.addEventListener('input', (e) => {
-		if (uiElements.kaleidoscopeNoiseBrightnessValue) uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.KALEIDOSCOPE_ANIMATION?.handleNoiseBrightnessChange?.();
-	});
-
-	// Morph Controls
-	uiElements.morphSpeed.addEventListener('input', (e) => {
-		if (uiElements.morphSpeedValue) uiElements.morphSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.MORPH_ANIMATION?.handleSpeedChange?.();
-	});
-	uiElements.morphRotationSpeed.addEventListener('input', (e) => {
-		if (uiElements.morphRotationSpeedValue) uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.MORPH_ANIMATION?.handleRotationSpeedChange?.();
-	});
-	// Add listener for morphComplexity if uncommented
+	// Control Buttons
+	uiElements.pausePlayButton.addEventListener("click", togglePause);
+	uiElements.randomizeButton.addEventListener("click", randomizeParameters);
 
 	// Window Resize
 	let resizeTimeout;
 	window.addEventListener("resize", () => {
 		clearTimeout(resizeTimeout);
 		resizeTimeout = setTimeout(() => {
-			console.log("Window resized, updating...");
-			setupRenderTargetAndCanvas(); // Update render target and canvas sizes
-		}, 150); // Debounce
+			console.log("Window resized, updating layout...");
+			setupRenderTargetAndCanvas(); // Recalculate everything based on new container size
+		}, 150); // Debounce resize event
 	});
 
-	// Metaballs Controls
-	uiElements.metaballsSpeed.addEventListener('input', (e) => {
-		if (uiElements.metaballsSpeedValue) uiElements.metaballsSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.METABALLS_ANIMATION?.handleSpeedChange?.();
+	// --- Animation Specific Listeners ---
+	// These listeners call the handlers defined in the respective animation modules.
+
+	// Torus
+	uiElements.torusSpeed.addEventListener("input", (e) => {
+		uiElements.torusSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(2);
+		// Speed is read directly in updateTorusAnimation
 	});
-	uiElements.metaballsColor.addEventListener('input', (e) => {
-		if (uiElements.metaballsColorValue) uiElements.metaballsColorValue.textContent = Number.parseFloat(e.target.value).toFixed(2);
-		window.METABALLS_ANIMATION?.handleColorChange?.();
+	uiElements.torusThickness.addEventListener("input", (e) => {
+		window.TORUS_ANIMATION?.handleThicknessChange?.(); // Calls geometry update
+	});
+	uiElements.torusMajorRadius.addEventListener("input", (e) => {
+		window.TORUS_ANIMATION?.handleMajorRadiusChange?.(); // Calls geometry update
+	});
+	uiElements.torusRoughness.addEventListener("input", (e) => {
+		window.TORUS_ANIMATION?.handleMaterialChange?.();
+	});
+	uiElements.torusMetalness.addEventListener("input", (e) => {
+		window.TORUS_ANIMATION?.handleMaterialChange?.();
+	});
+	uiElements.torusRotationAxis.addEventListener("change", (e) => {
+		// Axis is read directly in updateTorusAnimation
 	});
 
-	// Lissajous Controls
-	uiElements.lissajousSpeed.addEventListener('input', (e) => {
-		if (uiElements.lissajousSpeedValue) uiElements.lissajousSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1);
-		window.LISSAJOUS_ANIMATION?.handleSpeedChange?.(); // Assuming lissajous.js has this handler
+	// Noise
+	uiElements.noiseScale.addEventListener("input", (e) => {
+		uiElements.noiseScaleValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.NOISE_ANIMATION?.handleParamChange?.();
 	});
+	uiElements.noiseSpeed.addEventListener("input", (e) => {
+		uiElements.noiseSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.NOISE_ANIMATION?.handleParamChange?.(); // Update speed uniform
+	});
+	uiElements.noiseBrightness.addEventListener("input", (e) => {
+		uiElements.noiseBrightnessValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.NOISE_ANIMATION?.handleParamChange?.();
+	});
+
+	// Particles
+	uiElements.particleCount.addEventListener("input", (e) => {
+		uiElements.particleCountValue.textContent = e.target.value;
+		// Debounce this? It requires recreating the system.
+		// Add debounce if performance is an issue
+		window.PARTICLES_ANIMATION?.handleCountChange?.();
+	});
+	uiElements.particleSize.addEventListener("input", (e) => {
+		uiElements.particleSizeValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.PARTICLES_ANIMATION?.handleSizeChange?.();
+	});
+	uiElements.particleSpeed.addEventListener("input", (e) => {
+		uiElements.particleSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Speed is read directly in updateParticlesAnimation
+	});
+	uiElements.particleLifespan.addEventListener("input", (e) => {
+		uiElements.particleLifespanValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Lifespan is read directly in updateParticlesAnimation
+	});
+	uiElements.emitterShape.addEventListener("change", (e) => {
+		window.PARTICLES_ANIMATION?.handleEmitterChange?.(); // Requires restart
+	});
+	uiElements.emitterSize.addEventListener("input", (e) => {
+		uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Size change also requires restart in current setup
+		window.PARTICLES_ANIMATION?.handleEmitterChange?.();
+	});
+	uiElements.forceType.addEventListener("change", (e) => {
+		// Force type is read directly in updateParticlesAnimation
+	});
+	uiElements.forceStrength.addEventListener("input", (e) => {
+		uiElements.particleForceStrengthValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Force strength is read directly in updateParticlesAnimation
+	});
+
+	// Kaleidoscope
+	uiElements.kaleidoscopeSegments.addEventListener("input", (e) => {
+		uiElements.kaleidoscopeSegmentsValue.textContent = e.target.value;
+		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
+	});
+	uiElements.kaleidoscopeNoiseScale.addEventListener("input", (e) => {
+		uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
+	});
+	uiElements.kaleidoscopeNoiseSpeed.addEventListener("input", (e) => {
+		uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.(); // Update speed uniform
+	});
+	uiElements.kaleidoscopeNoiseBrightness.addEventListener("input", (e) => {
+		uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
+	});
+
+	// Morph
+	uiElements.morphSpeed.addEventListener("input", (e) => {
+		uiElements.morphSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Speed read directly in updateMorphAnimation
+	});
+	uiElements.morphRotationSpeed.addEventListener("input", (e) => {
+		uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		// Rotation speed read directly in updateMorphAnimation
+	});
+	uiElements.morphComplexity.addEventListener("input", (e) => {
+		uiElements.morphComplexityValue.textContent = e.target.value;
+		// Debounce this? Requires recreating geometry.
+		window.MORPH_ANIMATION?.handleComplexityChange?.();
+	});
+
+	// Metaballs
+	uiElements.metaballsCount.addEventListener("input", (e) => {
+		uiElements.metaballsCountValue.textContent = e.target.value;
+		window.METABALLS_ANIMATION?.handleParamChange?.();
+	});
+	uiElements.metaballsSize.addEventListener("input", (e) => {
+		uiElements.metaballsSizeValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.METABALLS_ANIMATION?.handleParamChange?.();
+	});
+	uiElements.metaballsSpeed.addEventListener("input", (e) => {
+		uiElements.metaballsSpeedValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(1);
+		window.METABALLS_ANIMATION?.handleParamChange?.(); // Update speed uniform
+	});
+	uiElements.metaballsThreshold.addEventListener("input", (e) => {
+		uiElements.metaballsThresholdValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(2);
+		window.METABALLS_ANIMATION?.handleParamChange?.();
+	});
+	uiElements.metaballsColor.addEventListener("input", (e) => {
+		uiElements.metaballsColorValue.textContent = Number.parseFloat(
+			e.target.value,
+		).toFixed(2);
+		window.METABALLS_ANIMATION?.handleParamChange?.();
+	});
+
+	// Lissajous
+	const lissajousSliders = [
+		uiElements.lissajousA,
+		uiElements.lissajousB,
+		uiElements.lissajousDelta,
+		uiElements.lissajousAmpA,
+		uiElements.lissajousAmpB,
+		uiElements.lissajousSpeed,
+		uiElements.lissajousPoints,
+	];
+	for (const slider of lissajousSliders) {
+		slider.addEventListener("input", (e) => {
+			// Update corresponding value display
+			const valueSpanId = slider.id.replace("-slider", "-value");
+			const valueSpan = document.getElementById(valueSpanId);
+			if (valueSpan) {
+				if (slider === uiElements.lissajousDelta) {
+					valueSpan.textContent = `${(Number.parseFloat(e.target.value) / Math.PI).toFixed(2)} PI`;
+				} else if (
+					slider === uiElements.lissajousAmpA ||
+					slider === uiElements.lissajousAmpB ||
+					slider === uiElements.lissajousSpeed
+				) {
+					valueSpan.textContent = Number.parseFloat(e.target.value).toFixed(1);
+				} else {
+					valueSpan.textContent = e.target.value;
+				}
+			}
+			// Call the central handler in lissajous.js
+			window.LISSAJOUS_ANIMATION?.handleParamChange?.();
+		});
+	}
 }
 
 // --- UI Update Functions ---
-
 function updateAllValueDisplays() {
 	// Update general controls
-	if (uiElements.resolutionValue) uiElements.resolutionValue.textContent = uiElements.resolution.value;
-	if (uiElements.brightnessValue) uiElements.brightnessValue.textContent = Number.parseFloat(uiElements.brightness.value).toFixed(2);
-	if (uiElements.contrastValue) uiElements.contrastValue.textContent = Number.parseFloat(uiElements.contrast.value).toFixed(1);
-	if (uiElements.zoomValue) uiElements.zoomValue.textContent = Number.parseFloat(uiElements.zoom.value).toFixed(1);
-	if (uiElements.renderTargetResolutionValue) uiElements.renderTargetResolutionValue.textContent = Number.parseFloat(uiElements.renderTargetResolution.value).toFixed(2);
+	if (uiElements.resolutionValue)
+		uiElements.resolutionValue.textContent = uiElements.resolution.value;
+	if (uiElements.brightnessValue)
+		uiElements.brightnessValue.textContent = Number.parseFloat(
+			uiElements.brightness.value,
+		).toFixed(2);
+	if (uiElements.contrastValue)
+		uiElements.contrastValue.textContent = Number.parseFloat(
+			uiElements.contrast.value,
+		).toFixed(1);
+	if (uiElements.zoomValue)
+		uiElements.zoomValue.textContent = Number.parseFloat(
+			uiElements.zoom.value,
+		).toFixed(1);
+	if (uiElements.renderTargetResolutionValue)
+		uiElements.renderTargetResolutionValue.textContent = Number.parseFloat(
+			uiElements.renderTargetResolution.value,
+		).toFixed(2);
 
 	// Update lighting controls
-	if (uiElements.ambientIntensityValue) uiElements.ambientIntensityValue.textContent = Number.parseFloat(uiElements.ambientIntensity.value).toFixed(2);
-	if (uiElements.directionalIntensityValue) uiElements.directionalIntensityValue.textContent = Number.parseFloat(uiElements.directionalIntensity.value).toFixed(1);
-	if (uiElements.lightPosXValue) uiElements.lightPosXValue.textContent = Number.parseFloat(uiElements.lightPosX.value).toFixed(1);
-	if (uiElements.lightPosYValue) uiElements.lightPosYValue.textContent = Number.parseFloat(uiElements.lightPosY.value).toFixed(1);
-	if (uiElements.lightPosZValue) uiElements.lightPosZValue.textContent = Number.parseFloat(uiElements.lightPosZ.value).toFixed(1);
+	if (uiElements.ambientIntensityValue)
+		uiElements.ambientIntensityValue.textContent = Number.parseFloat(
+			uiElements.ambientIntensity.value,
+		).toFixed(2);
+	if (uiElements.directionalIntensityValue)
+		uiElements.directionalIntensityValue.textContent = Number.parseFloat(
+			uiElements.directionalIntensity.value,
+		).toFixed(1);
+	if (uiElements.lightPosXValue)
+		uiElements.lightPosXValue.textContent = Number.parseFloat(
+			uiElements.lightPosX.value,
+		).toFixed(1);
+	if (uiElements.lightPosYValue)
+		uiElements.lightPosYValue.textContent = Number.parseFloat(
+			uiElements.lightPosY.value,
+		).toFixed(1);
+	if (uiElements.lightPosZValue)
+		uiElements.lightPosZValue.textContent = Number.parseFloat(
+			uiElements.lightPosZ.value,
+		).toFixed(1);
 
 	// Update animation-specific controls (ensure elements exist)
-	if (uiElements.torusSpeedValue) uiElements.torusSpeedValue.textContent = Number.parseFloat(uiElements.torusSpeed.value).toFixed(2);
-	if (uiElements.torusThicknessValue) uiElements.torusThicknessValue.textContent = Number.parseFloat(uiElements.torusThickness.value).toFixed(2);
-	if (uiElements.torusMajorRadiusValue) uiElements.torusMajorRadiusValue.textContent = Number.parseFloat(uiElements.torusMajorRadius.value).toFixed(1);
+	if (uiElements.torusSpeedValue)
+		uiElements.torusSpeedValue.textContent = Number.parseFloat(
+			uiElements.torusSpeed.value,
+		).toFixed(2);
+	if (uiElements.torusThicknessValue)
+		uiElements.torusThicknessValue.textContent = Number.parseFloat(
+			uiElements.torusThickness.value,
+		).toFixed(2);
+	if (uiElements.torusMajorRadiusValue)
+		uiElements.torusMajorRadiusValue.textContent = Number.parseFloat(
+			uiElements.torusMajorRadius.value,
+		).toFixed(1);
+	if (uiElements.torusRoughnessValue)
+		uiElements.torusRoughnessValue.textContent = Number.parseFloat(
+			uiElements.torusRoughness.value,
+		).toFixed(2);
+	if (uiElements.torusMetalnessValue)
+		uiElements.torusMetalnessValue.textContent = Number.parseFloat(
+			uiElements.torusMetalness.value,
+		).toFixed(2);
 
-	if (uiElements.noiseScaleValue) uiElements.noiseScaleValue.textContent = Number.parseFloat(uiElements.noiseScale.value).toFixed(1);
-	if (uiElements.noiseSpeedValue) uiElements.noiseSpeedValue.textContent = Number.parseFloat(uiElements.noiseSpeed.value).toFixed(1);
-	if (uiElements.noiseBrightnessValue) uiElements.noiseBrightnessValue.textContent = Number.parseFloat(uiElements.noiseBrightness.value).toFixed(1);
 
-	if (uiElements.particleCountValue) uiElements.particleCountValue.textContent = uiElements.particleCount.value;
-	if (uiElements.particleSizeValue) uiElements.particleSizeValue.textContent = Number.parseFloat(uiElements.particleSize.value).toFixed(1);
-	if (uiElements.particleSpeedValue) uiElements.particleSpeedValue.textContent = Number.parseFloat(uiElements.particleSpeed.value).toFixed(1);
-	if (uiElements.particleLifespanValue) uiElements.particleLifespanValue.textContent = Number.parseFloat(uiElements.particleLifespan.value).toFixed(1);
-	if (uiElements.particleEmitterSizeValue) uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(uiElements.particleEmitterSize.value).toFixed(1);
-	if (uiElements.particleForceStrengthValue) uiElements.particleForceStrengthValue.textContent = Number.parseFloat(uiElements.particleForceStrength.value).toFixed(1);
+	if (uiElements.noiseScaleValue)
+		uiElements.noiseScaleValue.textContent = Number.parseFloat(
+			uiElements.noiseScale.value,
+		).toFixed(1);
+	if (uiElements.noiseSpeedValue)
+		uiElements.noiseSpeedValue.textContent = Number.parseFloat(
+			uiElements.noiseSpeed.value,
+		).toFixed(1);
+	if (uiElements.noiseBrightnessValue)
+		uiElements.noiseBrightnessValue.textContent = Number.parseFloat(
+			uiElements.noiseBrightness.value,
+		).toFixed(1);
 
-	if (uiElements.kaleidoscopeSegmentsValue) uiElements.kaleidoscopeSegmentsValue.textContent = uiElements.kaleidoscopeSegments.value;
-	if (uiElements.kaleidoscopeNoiseScaleValue) uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseScale.value).toFixed(1);
-	if (uiElements.kaleidoscopeNoiseSpeedValue) uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseSpeed.value).toFixed(1);
-	if (uiElements.kaleidoscopeNoiseBrightnessValue) uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseBrightness.value).toFixed(1);
+	if (uiElements.particleCountValue)
+		uiElements.particleCountValue.textContent = uiElements.particleCount.value;
+	if (uiElements.particleSizeValue)
+		uiElements.particleSizeValue.textContent = Number.parseFloat(
+			uiElements.particleSize.value,
+		).toFixed(1);
+	if (uiElements.particleSpeedValue)
+		uiElements.particleSpeedValue.textContent = Number.parseFloat(
+			uiElements.particleSpeed.value,
+		).toFixed(1);
+	if (uiElements.particleLifespanValue)
+		uiElements.particleLifespanValue.textContent = Number.parseFloat(
+			uiElements.particleLifespan.value,
+		).toFixed(1);
+	if (uiElements.particleEmitterSizeValue)
+		uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(
+			uiElements.emitterSize.value,
+		).toFixed(1);
+	if (uiElements.particleForceStrengthValue)
+		uiElements.particleForceStrengthValue.textContent = Number.parseFloat(
+			uiElements.forceStrength.value,
+		).toFixed(1);
 
-	if (uiElements.morphSpeedValue) uiElements.morphSpeedValue.textContent = Number.parseFloat(uiElements.morphSpeed.value).toFixed(1);
-	if (uiElements.morphRotationSpeedValue) uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(uiElements.morphRotationSpeed.value).toFixed(1);
-	// if (uiElements.morphComplexityValue) uiElements.morphComplexityValue.textContent = uiElements.morphComplexity.value; // If uncommented
+	if (uiElements.kaleidoscopeSegmentsValue)
+		uiElements.kaleidoscopeSegmentsValue.textContent =
+			uiElements.kaleidoscopeSegments.value;
+	if (uiElements.kaleidoscopeNoiseScaleValue)
+		uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(
+			uiElements.kaleidoscopeNoiseScale.value,
+		).toFixed(1);
+	if (uiElements.kaleidoscopeNoiseSpeedValue)
+		uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(
+			uiElements.kaleidoscopeNoiseSpeed.value,
+		).toFixed(1);
+	if (uiElements.kaleidoscopeNoiseBrightnessValue)
+		uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(
+			uiElements.kaleidoscopeNoiseBrightness.value,
+		).toFixed(1);
 
-	if (uiElements.metaballsCountValue) uiElements.metaballsCountValue.textContent = uiElements.metaballsCount.value;
-	if (uiElements.metaballsSizeValue) uiElements.metaballsSizeValue.textContent = Number.parseFloat(uiElements.metaballsSize.value).toFixed(1);
-	if (uiElements.metaballsSpeedValue) uiElements.metaballsSpeedValue.textContent = Number.parseFloat(uiElements.metaballsSpeed.value).toFixed(1);
-	if (uiElements.metaballsThresholdValue) uiElements.metaballsThresholdValue.textContent = Number.parseFloat(uiElements.metaballsThreshold.value).toFixed(2);
-	if (uiElements.metaballsColorValue) uiElements.metaballsColorValue.textContent = Number.parseFloat(uiElements.metaballsColor.value).toFixed(2);
+	if (uiElements.morphSpeedValue)
+		uiElements.morphSpeedValue.textContent = Number.parseFloat(
+			uiElements.morphSpeed.value,
+		).toFixed(1);
+	if (uiElements.morphRotationSpeedValue)
+		uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(
+			uiElements.morphRotationSpeed.value,
+		).toFixed(1);
+	if (uiElements.morphComplexityValue) uiElements.morphComplexityValue.textContent = uiElements.morphComplexity.value; // If uncommented
 
-	if (uiElements.lissajousAValue) uiElements.lissajousAValue.textContent = uiElements.lissajousA.value;
-	if (uiElements.lissajousBValue) uiElements.lissajousBValue.textContent = uiElements.lissajousB.value;
-	if (uiElements.lissajousDeltaValue) uiElements.lissajousDeltaValue.textContent = `${(Number.parseFloat(uiElements.lissajousDelta.value) / Math.PI).toFixed(2)} PI`;
-	if (uiElements.lissajousAmpAValue) uiElements.lissajousAmpAValue.textContent = Number.parseFloat(uiElements.lissajousAmpA.value).toFixed(1);
-	if (uiElements.lissajousAmpBValue) uiElements.lissajousAmpBValue.textContent = Number.parseFloat(uiElements.lissajousAmpB.value).toFixed(1);
-	if (uiElements.lissajousSpeedValue) uiElements.lissajousSpeedValue.textContent = Number.parseFloat(uiElements.lissajousSpeed.value).toFixed(1);
-	if (uiElements.lissajousPointCountValue) uiElements.lissajousPointCountValue.textContent = uiElements.lissajousPointCount.value;
+	if (uiElements.metaballsCountValue)
+		uiElements.metaballsCountValue.textContent =
+			uiElements.metaballsCount.value;
+	if (uiElements.metaballsSizeValue)
+		uiElements.metaballsSizeValue.textContent = Number.parseFloat(
+			uiElements.metaballsSize.value,
+		).toFixed(1);
+	if (uiElements.metaballsSpeedValue)
+		uiElements.metaballsSpeedValue.textContent = Number.parseFloat(
+			uiElements.metaballsSpeed.value,
+		).toFixed(1);
+	if (uiElements.metaballsThresholdValue)
+		uiElements.metaballsThresholdValue.textContent = Number.parseFloat(
+			uiElements.metaballsThreshold.value,
+		).toFixed(2);
+	if (uiElements.metaballsColorValue)
+		uiElements.metaballsColorValue.textContent = Number.parseFloat(
+			uiElements.metaballsColor.value,
+		).toFixed(2);
+
+	if (uiElements.lissajousAValue)
+		uiElements.lissajousAValue.textContent = uiElements.lissajousA.value;
+	if (uiElements.lissajousBValue)
+		uiElements.lissajousBValue.textContent = uiElements.lissajousB.value;
+	if (uiElements.lissajousDeltaValue)
+		uiElements.lissajousDeltaValue.textContent = `${(Number.parseFloat(uiElements.lissajousDelta.value) / Math.PI).toFixed(2)} PI`;
+	if (uiElements.lissajousAmpAValue)
+		uiElements.lissajousAmpAValue.textContent = Number.parseFloat(
+			uiElements.lissajousAmpA.value,
+		).toFixed(1);
+	if (uiElements.lissajousAmpBValue)
+		uiElements.lissajousAmpBValue.textContent = Number.parseFloat(
+			uiElements.lissajousAmpB.value,
+		).toFixed(1);
+	if (uiElements.lissajousSpeedValue) // Corrected name
+		uiElements.lissajousSpeedValue.textContent = Number.parseFloat(
+			uiElements.lissajousSpeed.value, // Corrected name
+		).toFixed(1);
+	if (uiElements.lissajousPointsValue) // Corrected name
+		uiElements.lissajousPointsValue.textContent =
+			uiElements.lissajousPoints.value; // Corrected name
 }
 
-// --- UI Update Functions ---
-
 function updateUIForAnimationType(type) {
-	// Hide all animation-specific controls
-	// Use for...of loop instead of forEach
-	for (const el of document.querySelectorAll(".animation-controls")) {
-		el.style.display = "none"; // Keep assignment separate
-	}
-	activeControls = []; // Reset active controls
-
-	// Add general controls to activeControls list
-	const generalControlIds = [
-		"resolution",
-		"charset",
-		"brightness",
-		"contrast",
-		"zoom",
-		"invert",
-		"renderTargetResolution",
-		// Add lighting controls to the general list for randomization
-		'ambientIntensity', 'directionalIntensity', 'lightPosX', 'lightPosY', 'lightPosZ'
-	];
-	for (const id of generalControlIds) {
-		if (uiElements[id]) {
-			activeControls.push(uiElements[id]);
-		}
+	// Hide all animation-specific control sections
+	const controlSections = document.querySelectorAll(".animation-controls");
+	for (const section of controlSections) {
+		section.style.display = "none";
 	}
 
-	// Show controls for the selected type and add them to activeControls
+	// Show the controls for the selected animation type
 	let controlsToShow = null;
-	let specificControlIds = [];
+	let specificControlIds = []; // Keep track of active controls for randomization
 
 	switch (type) {
 		case "torus":
@@ -618,15 +865,21 @@ function updateUIForAnimationType(type) {
 				"torusSpeed",
 				"torusThickness",
 				"torusMajorRadius",
+				"torusRoughness",
+				"torusMetalness",
 				"torusRotationAxis",
 			];
 			break;
 		case "noise":
 			controlsToShow = uiElements.noiseControls;
-			specificControlIds = ["noiseScale", "noiseSpeed", "noiseBrightness"];
+			specificControlIds = [
+				"noiseScale",
+				"noiseSpeed",
+				"noiseBrightness",
+			];
 			break;
 		case "particles":
-			controlsToShow = uiElements.particleControls;
+			controlsToShow = uiElements.particlesControls;
 			specificControlIds = [
 				"particleCount",
 				"particleSize",
@@ -642,14 +895,28 @@ function updateUIForAnimationType(type) {
 			controlsToShow = uiElements.kaleidoscopeControls;
 			specificControlIds = [
 				"kaleidoscopeSegments",
-				"kaleidoscopeBaseNoiseScale",
-				"kaleidoscopeBaseNoiseSpeed",
-				"kaleidoscopeBaseNoiseBrightness",
+				"kaleidoscopeNoiseScale",
+				"kaleidoscopeNoiseSpeed",
+				"kaleidoscopeNoiseBrightness",
 			];
 			break;
 		case "morph":
 			controlsToShow = uiElements.morphControls;
-			specificControlIds = ["morphSpeed", "morphRotationSpeed"]; // Add morphComplexity if control exists
+			specificControlIds = [
+				"morphSpeed",
+				"morphRotationSpeed",
+				"morphComplexity",
+			]; // Add morphComplexity if control exists
+			break;
+		case "metaballs":
+			controlsToShow = uiElements.metaballsControls;
+			specificControlIds = [
+				"metaballsCount",
+				"metaballsSize",
+				"metaballsSpeed",
+				"metaballsThreshold",
+				"metaballsColor",
+			];
 			break;
 		case "lissajous":
 			controlsToShow = uiElements.lissajousControls;
@@ -659,8 +926,8 @@ function updateUIForAnimationType(type) {
 				"lissajousDelta",
 				"lissajousAmpA",
 				"lissajousAmpB",
-				"lissajousDrawSpeed",
-				"lissajousPointCount",
+				"lissajousSpeed", // Corrected name
+				"lissajousPoints", // Corrected name
 			];
 			break;
 		// Add case for 'metaballs' if integrating
@@ -668,18 +935,19 @@ function updateUIForAnimationType(type) {
 
 	if (controlsToShow) {
 		controlsToShow.style.display = "block";
-		for (const id of specificControlIds) {
-			if (uiElements[id]) {
-				activeControls.push(uiElements[id]);
-			}
-		}
+		// The activeControls logic seems redundant if randomization calls module functions directly
+		// activeControls = []; // Reset active controls
+		// for (const id of specificControlIds) {
+		//     if (uiElements[id]) {
+		//         activeControls.push(uiElements[id]);
+		//     }
+		// }
 	}
 }
 
 // --- Animation Switching ---
-
 function switchAnimation(type) {
-	console.log("Switching animation to:", type);
+	console.log(`Switching animation to: ${type}`); // Use template literal
 	const prevAnimationType = currentAnimationType; // Store previous type before updating
 	currentAnimationType = type;
 	if (uiElements.animationType) {
@@ -689,7 +957,8 @@ function switchAnimation(type) {
 
 	// --- Cleanup previous animation ---
 	// Try calling the cleanup function from the previous animation's module
-	const prevAnimationModule = window[`${prevAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal
+	const prevAnimationModule =
+		window[prevAnimationType.toUpperCase() + "_ANIMATION"]; // Use bracket notation
 	if (
 		prevAnimationModule &&
 		typeof prevAnimationModule.cleanup === "function"
@@ -697,28 +966,33 @@ function switchAnimation(type) {
 		try {
 			prevAnimationModule.cleanup(scene); // Pass scene if needed
 		} catch (error) {
-			console.error(`Error during ${prevAnimationType} module cleanup: ${error}`); // Use template literal
+			console.error(
+				`Error during ${prevAnimationType} module cleanup: ${error}`,
+			); // Use template literal
 		}
 	} else {
 		// Default cleanup if module or cleanup function doesn't exist
 		console.log("Performing default scene cleanup.");
 		if (scene) {
 			// Check if scene exists
-			while (scene.children.length > 0) {
-				const obj = scene.children[0];
-				scene.remove(obj);
-				if (obj.geometry) obj.geometry.dispose();
-				if (obj.material) {
-					// Prefer for...of instead of forEach. (Already addressed in previous step, verified)
-					if (Array.isArray(obj.material)) {
-						for (const m of obj.material) {
-							m.dispose();
+			// Use for...of loop for scene children removal
+			const childrenToRemove = [...scene.children]; // Create a copy to iterate over
+			for (const obj of childrenToRemove) {
+				// Don't remove lights managed globally here
+				if (obj !== animationObjects.ambientLight && obj !== animationObjects.directionalLight) {
+					scene.remove(obj);
+					if (obj.geometry) obj.geometry.dispose();
+					if (obj.material) {
+						if (Array.isArray(obj.material)) {
+							for (const m of obj.material) {
+								m.dispose();
+							}
+						} else {
+							obj.material.dispose();
 						}
-					} else {
-						obj.material.dispose();
 					}
+					// Dispose textures? Might be needed depending on animation
 				}
-				// Dispose textures? Might be needed depending on animation
 			}
 		}
 	}
@@ -734,14 +1008,24 @@ function switchAnimation(type) {
 	// Add basic lighting (modules might add/remove their own)
 	// Use initial values from sliders
 	const ambientIntensity = Number.parseFloat(uiElements.ambientIntensity.value);
-	const directionalIntensity = Number.parseFloat(uiElements.directionalIntensity.value);
+	const directionalIntensity = Number.parseFloat(
+		uiElements.directionalIntensity.value,
+	);
 	const lightX = Number.parseFloat(uiElements.lightPosX.value);
 	const lightY = Number.parseFloat(uiElements.lightPosY.value);
 	const lightZ = Number.parseFloat(uiElements.lightPosZ.value);
 
+	// Remove existing lights before adding new ones to avoid duplicates
+	if (animationObjects.ambientLight) scene.remove(animationObjects.ambientLight);
+	if (animationObjects.directionalLight) scene.remove(animationObjects.directionalLight);
+
+
 	const ambientLight = new THREE.AmbientLight(0xffffff, ambientIntensity);
 	scene.add(ambientLight);
-	const directionalLight = new THREE.DirectionalLight(0xffffff, directionalIntensity);
+	const directionalLight = new THREE.DirectionalLight(
+		0xffffff,
+		directionalIntensity,
+	);
 	directionalLight.position.set(lightX, lightY, lightZ);
 	scene.add(directionalLight);
 	// Store lights in animationObjects so they can be potentially removed by cleanup AND updated by sliders
@@ -749,7 +1033,7 @@ function switchAnimation(type) {
 	animationObjects.directionalLight = directionalLight;
 
 	// Get the setup function from the corresponding module
-	const currentAnimationModule = window[`${type.toUpperCase()}_ANIMATION`]; // Use template literal
+	const currentAnimationModule = window[`${type.toUpperCase()}_ANIMATION`]; // Use template literal for key
 	if (
 		currentAnimationModule &&
 		typeof currentAnimationModule.setup === "function"
@@ -770,19 +1054,19 @@ function switchAnimation(type) {
 		newZoom = 5;
 	} else if (type === "morph" || type === "torus" || type === "lissajous") {
 		newZoom = 10;
-	} else if (type === "metaballs") {
-		// Add if metaballs integrated
+	} else if (type === "metaballs" || type === "particles") { // Grouped similar zoom levels
 		newZoom = 15;
 	}
 	if (camera) {
 		camera.position.z = newZoom;
 		camera.rotation.set(0, 0, 0); // Reset rotation
-		uiElements.zoom.value = newZoom; // Sync slider
-		// updateAllValueDisplays(); // Update zoom value display if it exists
+		uiElements.zoom.value = newZoom.toString(); // Sync slider
+		uiElements.zoomValue.textContent = newZoom.toFixed(1); // Sync label
+		camera.updateProjectionMatrix(); // Ensure matrix is updated after position change
 	}
 
-	updateUIForAnimationType(type); // Update UI after setting up
-	console.log("Animation setup complete for:", type);
+	// Update the UI to show the correct controls
+	updateUIForAnimationType(type);
 }
 
 // --- Specific Animation Setup/Update Functions ---
@@ -799,7 +1083,7 @@ function renderToAscii() {
 		!camera ||
 		!renderTarget ||
 		!downscaleCtx ||
-		!display
+		!uiElements.display
 	) {
 		console.warn("Render components not ready for ASCII conversion.");
 		return;
@@ -845,7 +1129,7 @@ function renderToAscii() {
 	tempCanvas.height = rtHeight;
 	const tempCtx = tempCanvas.getContext("2d");
 	const imageData = new ImageData(
-		new Uint8ClampedArray(buffer.buffer),
+		new Uint8ClampedArray(buffer.buffer), // Use buffer.buffer for underlying ArrayBuffer
 		rtWidth,
 		rtHeight,
 	);
@@ -878,10 +1162,11 @@ function renderToAscii() {
 	const asciiWidth = downscaleCanvas.width;
 	const asciiHeight = downscaleCanvas.height;
 	let asciiString = "";
-	const brightnessThreshold = Number.parseFloat(uiElements.brightness.value);
+	const brightnessOffset = Number.parseFloat(uiElements.brightness.value) - 0.5; // Center offset around 0
 	const contrastFactor = Number.parseFloat(uiElements.contrast.value);
 	const invert = uiElements.invert.checked;
-	const numChars = asciiChars.length - 1; // -1 because we use floor
+	const numChars = asciiChars.length; // Use length directly
+	const charLengthFactor = 1 / numChars; // Precompute factor
 
 	for (let y = 0; y < asciiHeight; y++) {
 		for (let x = 0; x < asciiWidth; x++) {
@@ -896,9 +1181,8 @@ function renderToAscii() {
 			// Apply contrast (adjust midpoint to 0.5 before scaling)
 			brightness = (brightness - 0.5) * contrastFactor + 0.5;
 
-			// Apply brightness threshold (acts more like an offset now)
-			// This interpretation might differ from main.js's threshold logic
-			brightness += brightnessThreshold - 0.5; // Adjust threshold to be centered around 0.5
+			// Apply brightness offset
+			brightness += brightnessOffset;
 
 			// Clamp brightness
 			brightness = Math.max(0, Math.min(1, brightness));
@@ -909,23 +1193,22 @@ function renderToAscii() {
 			}
 
 			// Map brightness to ASCII character
-			const charIndex = Math.floor(brightness * numChars);
+            // Avoid index out of bounds by clamping index calculation result
+            const charIndex = Math.min(numChars - 1, Math.floor(brightness * numChars));
 			asciiString += asciiChars[charIndex];
 		}
 		asciiString += "\n"; // Newline for each row
 	}
 
 	// 6. Display ASCII
-	display.textContent = asciiString;
+	uiElements.display.textContent = asciiString;
 }
 
 // --- Animation Loop ---
-let lastTime = 0;
 function animate(currentTime) {
 	// Avoid parameter reassignment for currentTime
-	const elapsedSeconds = currentTime * 0.001; // convert time to seconds
-	const delta = elapsedSeconds - lastTime;
-	lastTime = elapsedSeconds;
+	const elapsedSeconds = clock.getElapsedTime(); // Use THREE.Clock's elapsed time
+	const delta = clock.getDelta(); // Use THREE.Clock's delta time
 
 	if (!isPaused) {
 		// Update camera zoom (already handled by slider listener, but ensure matrix is updated)
@@ -934,7 +1217,7 @@ function animate(currentTime) {
 
 		// Get the update function from the current animation's module
 		const currentAnimationModule =
-			window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal
+			window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal for key
 		if (
 			currentAnimationModule &&
 			typeof currentAnimationModule.update === "function"
@@ -943,7 +1226,7 @@ function animate(currentTime) {
 				// Pass delta and elapsedTime (or just rely on global clock if modules use it)
 				currentAnimationModule.update(delta, elapsedSeconds);
 			} catch (error) {
-				console.error(`Error during ${currentAnimationType} update: ${error}`); // Use template literal
+				console.error(`Error during ${currentAnimationType} update:`, error); // Use template literal and log error object
 				// Optionally pause or switch to a default animation on error
 				// togglePause();
 			}
@@ -962,93 +1245,52 @@ function animate(currentTime) {
 
 function togglePause() {
 	isPaused = !isPaused;
-	pausePlayButton.textContent = isPaused ? "Play" : "Pause";
-	console.log(isPaused ? "Animation Paused" : "Animation Resumed");
-	if (!isPaused && !animationFrameId) {
-		// Restart loop if resuming and loop was fully stopped
-		lastTime = performance.now() * 0.001; // Reset time to avoid jump
-		animate(performance.now());
-	} else if (isPaused && animationFrameId) {
-		cancelAnimationFrame(animationFrameId);
-		animationFrameId = null;
+	uiElements.pausePlayButton.textContent = isPaused ? "Play" : "Pause";
+	if (!isPaused) {
+		// clock.start(); // Restart clock? Or just resume animation loop? Resuming loop is usually enough.
+		animate(); // Restart animation loop if paused
+	} else {
+		cancelAnimationFrame(animationFrameId); // Stop loop if pausing
+		// clock.stop(); // Stop clock?
 	}
+	console.log(isPaused ? "Animation Paused" : "Animation Resumed");
 }
 
 function randomizeParameters() {
-	console.log("Randomizing parameters...");
+	console.log(`Randomizing parameters for ${currentAnimationType}...`);
 
-	// Randomize animation type first
-	const animationTypes = Array.from(uiElements.animationType.options).map(
-		(opt) => opt.value,
-	);
-	const randomType =
-		animationTypes[Math.floor(Math.random() * animationTypes.length)];
-
-	// Switch animation only if it changed, to avoid unnecessary setup/cleanup cycles
-	const typeChanged = currentAnimationType !== randomType;
-	if (typeChanged) {
-		switchAnimation(randomType); // This also updates activeControls and UI
-	} else {
-		// If type didn't change, ensure UI reflects current type
-		updateUIForAnimationType(currentAnimationType);
-	}
-
-	// Randomize values for currently active controls
-	// Use for...of loop
-	for (const control of activeControls) {
-		if (!control) continue; // Skip if control wasn't found
-
-		if (control.type === "range") {
-			const min = Number.parseFloat(control.min);
-			const max = Number.parseFloat(control.max);
-			const step = Number.parseFloat(control.step) || (max - min) / 100; // Estimate step
-			const range = max - min;
-			const randomSteps = Math.floor(Math.random() * (range / step + 1));
-			control.value = min + randomSteps * step;
-		} else if (control.tagName === "SELECT") {
-			const randomIndex = Math.floor(Math.random() * control.options.length);
-			control.selectedIndex = randomIndex;
-		} else if (control.type === "checkbox") {
-			control.checked = Math.random() < 0.5;
-		}
-		// Trigger input/change event to update value displays and potentially the animation
-		control.dispatchEvent(new Event("input", { bubbles: true }));
-		control.dispatchEvent(new Event("change", { bubbles: true }));
-	}
-
-	// Check if the current animation module has a specific randomize function
+	// Call the randomize function from the current animation's module
 	const currentAnimationModule =
-		window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal
+		window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal for key
 	if (
 		currentAnimationModule &&
 		typeof currentAnimationModule.randomize === "function"
 	) {
-		console.log(`Calling randomize for ${currentAnimationType}...`);
 		try {
 			currentAnimationModule.randomize();
 		} catch (error) {
-			console.error(`Error during ${currentAnimationType} randomize: ${error}`); // Use template literal
+			console.error(
+				`Error during ${currentAnimationType} randomization:`,
+				error,
+			);
 		}
+	} else {
+		console.warn(
+			`Randomize function for animation type "${currentAnimationType}" not found.`,
+		);
+		// Optional: Randomize global controls if no specific function exists?
+		// Example: Randomize zoom, brightness, contrast
+		// uiElements.zoom.value = (Math.random() * 37 + 3).toFixed(1);
+		// uiElements.zoom.dispatchEvent(new Event('input', { bubbles: true }));
+		// ... etc ...
 	}
 
-	// Special handling for controls that require animation restart *if not handled by module listeners/randomizers*
-	// This might be redundant if modules handle their own restarts/updates correctly
-	// const requiresRestart = ['torusThickness', 'torusMajorRadius', 'particleCount', 'lissajousPointCount', /* ... */ ];
-	// let restartNeeded = false;
-	// for (const control of activeControls) {
-	//     if (requiresRestart.includes(control.id)) {
-	//         // Check if the value actually changed
-	//         // restartNeeded = true; // Simplified check
-	//         break;
-	//     }
-	// }
-	// if (restartNeeded && !typeChanged) {
-	//     console.log("Restarting animation due to parameter change:", currentAnimationType);
-	//     switchAnimation(currentAnimationType); // Restart current animation
-	// }
-
-	updateAllValueDisplays(); // Ensure text values match sliders/selects
-	console.log("Randomization complete. Current type:", currentAnimationType);
+	// Optionally randomize global/lighting controls as well
+	// Example:
+	// uiElements.ambientIntensity.value = (Math.random() * 1.5).toFixed(2);
+	// uiElements.ambientIntensity.dispatchEvent(new Event('input', { bubbles: true }));
+	// uiElements.directionalIntensity.value = (Math.random() * 2.5 + 0.5).toFixed(1);
+	// uiElements.directionalIntensity.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 // --- Utility Functions ---

@@ -1,128 +1,144 @@
 // Noise Field Animation
+
+// Basic Vertex Shader
+const noiseVertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// Basic Fragment Shader (Simplex Noise)
+const noiseFragmentShader = `
+  varying vec2 vUv;
+  uniform float u_time;
+  uniform float u_scale;
+  uniform float u_brightness;
+
+  // Basic 2D random function
+  float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+  }
+
+  // 2D Noise function (simple value noise)
+  float noise(vec2 st) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+
+    // Four corners in 2D of a tile
+    float a = random(i);
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+
+    // Smooth interpolation
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+  }
+
+  void main() {
+    vec2 scaledUv = vUv * u_scale;
+    float noiseValue = noise(scaledUv + vec2(u_time * 0.1, u_time * 0.05)); // Animate noise over time
+    float brightness = (noiseValue * 0.5 + 0.5) * u_brightness; // Map noise from [0, 1] to brightness
+    gl_FragColor = vec4(vec3(brightness), 1.0);
+  }
+`;
+
 function setupNoiseAnimation() {
-    console.log("Setting up Noise Field animation");
-    
-    // Get parameters from controls
-    const scale = parseFloat(noiseControls.sliderScale.value);
-    const brightness = parseFloat(noiseControls.sliderBrightness.value);
-    
-    // Create a plane to render the noise on
-    const planeGeometry = new THREE.PlaneGeometry(10, 10, 100, 100);
-    
-    // Shader material for the noise
-    const noiseMaterial = new THREE.ShaderMaterial({
+    console.log("Setting up Noise animation (placeholder)");
+    const geometry = new THREE.PlaneGeometry(10, 10); // Simple plane
+    const material = new THREE.ShaderMaterial({
+        vertexShader: noiseVertexShader,
+        fragmentShader: noiseFragmentShader,
         uniforms: {
-            time: { value: 0.0 },
-            scale: { value: scale },
-            brightness: { value: brightness }
+            u_time: { value: 0.0 },
+            u_scale: { value: Number.parseFloat(noiseControls.sliderScale.value) || 4.0 },
+            u_brightness: { value: Number.parseFloat(noiseControls.sliderBrightness.value) || 1.0 },
         },
-        vertexShader: `
-            varying vec2 vUv;
-            void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform float time;
-            uniform float scale;
-            uniform float brightness;
-            varying vec2 vUv;
-            
-            // Simplex noise function (from GLSL community snippets)
-            vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
-            
-            float snoise(vec2 v) {
-                const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-                        -0.577350269189626, 0.024390243902439);
-                vec2 i  = floor(v + dot(v, C.yy));
-                vec2 x0 = v -   i + dot(i, C.xx);
-                vec2 i1;
-                i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-                vec4 x12 = x0.xyxy + C.xxzz;
-                x12.xy -= i1;
-                i = mod(i, 289.0);
-                vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-                + i.x + vec3(0.0, i1.x, 1.0 ));
-                vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
-                    dot(x12.zw,x12.zw)), 0.0);
-                m = m*m;
-                m = m*m;
-                vec3 x = 2.0 * fract(p * C.www) - 1.0;
-                vec3 h = abs(x) - 0.5;
-                vec3 ox = floor(x + 0.5);
-                vec3 a0 = x - ox;
-                m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-                vec3 g;
-                g.x  = a0.x  * x0.x  + h.x  * x0.y;
-                g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-                return 130.0 * dot(m, g);
-            }
-            
-            void main() {
-                // Adjusted UV coordinates for centered noise field
-                vec2 uv = vUv * 2.0 - 1.0;
-                
-                // Layer multiple noise octaves
-                float n1 = snoise((uv * scale) + vec2(time * 0.1, time * 0.08));
-                float n2 = snoise((uv * scale * 2.0) + vec2(time * -0.15, time * 0.12));
-                float n3 = snoise((uv * scale * 4.0) + vec2(time * 0.2, time * -0.18));
-                
-                // Combine noise layers with different weights
-                float combinedNoise = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
-                
-                // Normalize to [0, 1] range 
-                float normalizedNoise = (combinedNoise + 1.0) * 0.5;
-                
-                // Apply brightness adjustment
-                normalizedNoise = pow(normalizedNoise, 1.0 / brightness);
-                
-                // Create some color variation based on position and noise
-                vec3 color1 = vec3(0.0, 0.5, 1.0); // Blue
-                vec3 color2 = vec3(1.0, 0.2, 0.8); // Magenta
-                
-                // Mix colors based on UV position and noise
-                vec3 finalColor = mix(color1, color2, normalizedNoise);
-                
-                // Final color with noise as brightness
-                gl_FragColor = vec4(finalColor * normalizedNoise, 1.0);
-            }
-        `
     });
-    
-    // Create mesh and add to scene
-    const plane = new THREE.Mesh(planeGeometry, noiseMaterial);
-    scene.add(plane);
-    
-    // Store references for animation updates
-    animationObjects.plane = plane;
-    animationObjects.material = noiseMaterial;
-    
-    // Add listeners for control changes
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = "noisePlane";
+    scene.add(mesh);
+
+    animationObjects.mesh = mesh;
+    animationObjects.material = material;
+    animationObjects.geometry = geometry;
+
+    // Add listeners if not already in script.js
     noiseControls.sliderScale.addEventListener('input', handleNoiseParamChange);
+    noiseControls.sliderSpeed.addEventListener('input', handleNoiseParamChange); // Speed affects u_time rate
     noiseControls.sliderBrightness.addEventListener('input', handleNoiseParamChange);
-    noiseControls.sliderSpeed.addEventListener('input', handleNoiseParamChange);
 }
+
+function cleanupNoiseAnimation() {
+    console.log("Cleaning up Noise animation (placeholder)");
+    if (animationObjects.mesh) {
+        scene.remove(animationObjects.mesh);
+        if (animationObjects.geometry) animationObjects.geometry.dispose();
+        if (animationObjects.material) animationObjects.material.dispose();
+    }
+    animationObjects.mesh = null;
+    animationObjects.material = null;
+    animationObjects.geometry = null;
+
+    // Remove listeners
+    noiseControls.sliderScale.removeEventListener('input', handleNoiseParamChange);
+    noiseControls.sliderSpeed.removeEventListener('input', handleNoiseParamChange);
+    noiseControls.sliderBrightness.removeEventListener('input', handleNoiseParamChange);
+}
+
 
 function handleNoiseParamChange() {
     if (currentAnimation !== 'noise' || !animationObjects.material) return;
-    
-    // Update shader uniforms
-    animationObjects.material.uniforms.scale.value = parseFloat(noiseControls.sliderScale.value);
-    animationObjects.material.uniforms.brightness.value = parseFloat(noiseControls.sliderBrightness.value);
+
+    const scale = Number.parseFloat(noiseControls.sliderScale.value);
+    const brightness = Number.parseFloat(noiseControls.sliderBrightness.value);
+    // Speed is handled in the update loop
+
+    animationObjects.material.uniforms.u_scale.value = scale;
+    animationObjects.material.uniforms.u_brightness.value = brightness;
+
+    // Update UI labels (already done in script.js listener, but good practice here too)
+    if (uiElements.noiseScaleValue) uiElements.noiseScaleValue.textContent = scale.toFixed(1);
+    if (uiElements.noiseBrightnessValue) uiElements.noiseBrightnessValue.textContent = brightness.toFixed(1);
+    // Speed label updated in script.js listener
 }
 
 function updateNoiseAnimation(deltaTime, elapsedTime) {
     if (!animationObjects.material) return;
-    
-    // Update time uniform for shader animation
-    const speed = parseFloat(noiseControls.sliderSpeed.value);
-    animationObjects.material.uniforms.time.value = elapsedTime * speed;
+    const speed = Number.parseFloat(noiseControls.sliderSpeed.value) || 1.0;
+    animationObjects.material.uniforms.u_time.value = elapsedTime * speed;
 }
+
+function randomizeNoiseParameters() {
+    console.log("Randomizing Noise parameters...");
+    const sliders = [
+        noiseControls.sliderScale,
+        noiseControls.sliderSpeed,
+        noiseControls.sliderBrightness,
+    ];
+
+    for (const slider of sliders) {
+        const min = Number.parseFloat(slider.min);
+        const max = Number.parseFloat(slider.max);
+        const step = Number.parseFloat(slider.step) || (max - min) / 100;
+        const randomValue = min + Math.random() * (max - min);
+        slider.value = (Math.round(randomValue / step) * step).toFixed(
+            step.toString().includes('.') ? step.toString().split('.')[1].length : 0
+        );
+        // Trigger input event to update uniforms via handleNoiseParamChange and labels via script.js
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
 
 // Make functions available to the main script
 window.NOISE_ANIMATION = {
     setup: setupNoiseAnimation,
     update: updateNoiseAnimation,
-    handleParamChange: handleNoiseParamChange
+    cleanup: cleanupNoiseAnimation,
+    randomize: randomizeNoiseParameters,
+    // handleParamChange: handleNoiseParamChange // Specific handlers added
 };
