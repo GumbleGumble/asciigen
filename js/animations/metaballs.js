@@ -1,6 +1,6 @@
-// Metaballs / Gooey Blobs Animation (2D Shader Based)
+// Metaballs Animation Module
 
-// Basic Vertex Shader
+// Shader code (unchanged)
 const metaballsVertexShader = `
   varying vec2 vUv;
   void main() {
@@ -9,38 +9,42 @@ const metaballsVertexShader = `
   }
 `;
 
-// Basic Fragment Shader (Metaballs)
 const metaballsFragmentShader = `
   varying vec2 vUv;
   uniform float u_time;
-  uniform int u_ball_count;
+  uniform int u_ball_count; // Use int
   uniform float u_ball_size;
   uniform float u_speed;
   uniform float u_threshold;
-  uniform float u_color_blend; // 0 = blue, 1 = red
+  uniform float u_color_blend; // 0.0 to 1.0
 
-  // Simple pseudo-random movement based on index and time
-  vec2 getBallPosition(int index, float time) {
-    float i = float(index);
-    float speed = u_speed * 0.2;
-    float angle1 = i * 1.37 + time * speed * (0.5 + fract(i * 0.31));
-    float angle2 = i * 2.41 + time * speed * (0.5 + fract(i * 0.73)) * 0.8;
-    float radius = 0.3 + 0.1 * sin(i * 0.93 + time * speed * 0.3);
-    return vec2(0.5 + cos(angle1) * radius, 0.5 + sin(angle2) * radius * 0.8);
+  // Simple pseudo-random generator
+  float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
   }
 
   void main() {
+    vec2 p = vUv * 10.0 - 5.0; // Scale UVs to -5 to 5 range
     float sum = 0.0;
-    vec2 uv = vUv;
 
-    for (int i = 0; i < 25; ++i) { // Max balls limit in shader
-        if (i >= u_ball_count) break; // Use uniform count
-        vec2 ballPos = getBallPosition(i, u_time);
-        float dist = distance(uv, ballPos);
-        sum += u_ball_size / (dist * dist + 0.01); // Additive influence, avoid division by zero
+    for (int i = 0; i < 30; ++i) { // Max balls limit in shader
+        if (i >= u_ball_count) break; // Stop if we exceed the requested count
+
+        float fi = float(i);
+        // Generate pseudo-random movement patterns
+        float timeFactor = u_time * u_speed * 0.2;
+        float offsetX = sin(timeFactor * (0.5 + rand(vec2(fi, fi*0.5))) + fi * 2.0) * 3.0;
+        float offsetY = cos(timeFactor * (0.5 + rand(vec2(fi*0.5, fi))) + fi * 2.5) * 3.0;
+        float offsetZ = sin(timeFactor * (0.3 + rand(vec2(fi, fi))) + fi * 1.5) * 0.5 + 0.5; // Size variation
+
+        vec2 ballPos = vec2(offsetX, offsetY);
+        float ballSize = u_ball_size * offsetZ; // Vary size slightly
+
+        float d = length(p - ballPos);
+        sum += ballSize / d; // Inverse distance for metaball effect
     }
 
-    // Apply threshold and smoothstep for softer edges
+    // Apply threshold with smoothing
     float intensity = smoothstep(u_threshold - 0.1, u_threshold + 0.1, sum);
 
     // Basic color blending
@@ -54,22 +58,22 @@ const metaballsFragmentShader = `
 
 // Define controls mapping if not already in script.js
 // Assuming uiElements and metaballsControls exist globally from script.js
-const metaballsControls = {
-    sliderCount: uiElements.metaballsCount,
-    valueCount: uiElements.metaballsCountValue,
-    sliderSize: uiElements.metaballsSize,
-    valueSize: uiElements.metaballsSizeValue,
-    sliderSpeed: uiElements.metaballsSpeed,
-    valueSpeed: uiElements.metaballsSpeedValue,
-    sliderThreshold: uiElements.metaballsThreshold,
-    valueThreshold: uiElements.metaballsThresholdValue,
-    sliderColor: uiElements.metaballsColor,
-    valueColor: uiElements.metaballsColorValue,
-};
+// const metaballsControls = { // Already defined in script.js
+//     sliderCount: uiElements.metaballsCount,
+//     valueCount: uiElements.metaballsCountValue,
+//     sliderSize: uiElements.metaballsSize,
+//     valueSize: uiElements.metaballsSizeValue,
+//     sliderSpeed: uiElements.metaballsSpeed,
+//     valueSpeed: uiElements.metaballsSpeedValue,
+//     sliderThreshold: uiElements.metaballsThreshold,
+//     valueThreshold: uiElements.metaballsThresholdValue,
+//     sliderColor: uiElements.metaballsColor,
+//     valueColor: uiElements.metaballsColorValue,
+// };
 
 
 function setupMetaballsAnimation() {
-    console.log("Setting up Metaballs animation (placeholder)");
+    console.log("Setting up Metaballs animation");
     const geometry = new THREE.PlaneGeometry(10, 10);
     const material = new THREE.ShaderMaterial({
         vertexShader: metaballsVertexShader,
@@ -92,16 +96,16 @@ function setupMetaballsAnimation() {
     animationObjects.material = material;
     animationObjects.geometry = geometry;
 
-    // Add listeners
-    metaballsControls.sliderCount.addEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderSize.addEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderSpeed.addEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderThreshold.addEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderColor.addEventListener('input', handleMetaballsParamChange);
+    // Add listeners (handled in script.js, ensure handleMetaballsParamChange exists)
+    // metaballsControls.sliderCount.addEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderSize.addEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderSpeed.addEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderThreshold.addEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderColor.addEventListener('input', handleMetaballsParamChange);
 }
 
 function cleanupMetaballsAnimation() {
-    console.log("Cleaning up Metaballs animation (placeholder)");
+    console.log("Cleaning up Metaballs animation");
     if (animationObjects.mesh) {
         scene.remove(animationObjects.mesh);
         if (animationObjects.geometry) animationObjects.geometry.dispose();
@@ -111,17 +115,18 @@ function cleanupMetaballsAnimation() {
     animationObjects.material = null;
     animationObjects.geometry = null;
 
-    // Remove listeners
-    metaballsControls.sliderCount.removeEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderSize.removeEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderSpeed.removeEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderThreshold.removeEventListener('input', handleMetaballsParamChange);
-    metaballsControls.sliderColor.removeEventListener('input', handleMetaballsParamChange);
+    // Remove listeners (handled centrally in script.js)
+    // metaballsControls.sliderCount.removeEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderSize.removeEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderSpeed.removeEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderThreshold.removeEventListener('input', handleMetaballsParamChange);
+    // metaballsControls.sliderColor.removeEventListener('input', handleMetaballsParamChange);
 }
 
 // Handle changes to metaballs parameters (no recreation needed)
 function handleMetaballsParamChange() {
-    if (currentAnimation !== 'metaballs' || !animationObjects.material) return;
+    // Check if currentAnimationType is defined globally (from script.js)
+    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'metaballs' || !animationObjects.material) return;
 
     const count = Number.parseInt(metaballsControls.sliderCount.value);
     const size = Number.parseFloat(metaballsControls.sliderSize.value);
@@ -155,6 +160,7 @@ function randomizeMetaballsParameters() {
     ];
 
     for (const slider of sliders) {
+         if (!slider) continue;
         const min = Number.parseFloat(slider.min);
         const max = Number.parseFloat(slider.max);
         const step = Number.parseFloat(slider.step) || (max - min) / 100;
@@ -173,6 +179,5 @@ window.METABALLS_ANIMATION = {
     update: updateMetaballsAnimation,
     cleanup: cleanupMetaballsAnimation,
     randomize: randomizeMetaballsParameters,
-    // handleCountChange: handleMetaballsParamChange, // Replaced with single handler
-    // handleParamChange: handleMetaballsParamChange // Replaced with single handler
+    handleParamChange: handleMetaballsParamChange // Unified handler
 };

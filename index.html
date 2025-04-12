@@ -12,7 +12,8 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <h1 class="text-3xl font-bold text-center mb-6 text-blue-300">asciigen</h1> <!-- Updated project name -->
+    <!-- Updated h1 class list -->
+    <h1 class="text-4xl md:text-5xl font-mono font-bold text-center mb-6 text-blue-300 title-shadow">asciigen</h1>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-1 space-y-4">
@@ -66,7 +67,8 @@
             </div>
 
             <!-- Lighting Controls Section -->
-            <div class="control-section">
+            <!-- Added ID for script.js control -->
+            <div id="lighting-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Lighting Controls</h2>
                 <div>
                     <label for="ambient-intensity-slider" class="slider-label">Ambient Intensity:</label>
@@ -126,6 +128,16 @@
                 <div>
                     <label for="torusMajorRadius" class="block text-sm font-medium text-gray-400">Major Radius (<span id="torusMajorRadiusValue">1.0</span>)</label> <!-- Updated default display -->
                     <input type="range" id="torusMajorRadius" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg dark:bg-gray-700">
+                </div>
+                 <div> <!-- Added Roughness -->
+                    <label for="torus-roughness-slider" class="slider-label">Roughness:</label>
+                    <input type="range" id="torus-roughness-slider" name="torus-roughness" min="0" max="1" value="0.5" step="0.05">
+                    <span class="text-sm text-gray-400"><span id="torus-roughness-value">0.50</span></span>
+                </div>
+                <div> <!-- Added Metalness -->
+                    <label for="torus-metalness-slider" class="slider-label">Metalness:</label>
+                    <input type="range" id="torus-metalness-slider" name="torus-metalness" min="0" max="1" value="0.1" step="0.05">
+                    <span class="text-sm text-gray-400"><span id="torus-metalness-value">0.10</span></span>
                 </div>
                 <div>
                     <label for="torusRotationAxis" class="block text-sm font-medium text-gray-400">Rotation Axis</label>
@@ -198,6 +210,9 @@
                         <option value="none">None</option>
                         <option value="gravity">Gravity</option>
                         <option value="vortex">Vortex</option>
+                        <option value="flow">Flow Field</option> <!-- Added -->
+                        <option value="attract">Attract Origin</option> <!-- Added -->
+                        <option value="repel">Repel Origin</option> <!-- Added -->
                     </select>
                 </div>
                 <div>
@@ -243,14 +258,11 @@
                     <input type="range" id="morph-rotation-slider" name="morph-rotation" min="0" max="3.0" value="1.0" step="0.1">
                     <span class="text-sm text-gray-400"><span id="morph-rotation-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
-                <!-- Add complexity slider if needed by morph.js -->
-                <!--
-                <div>
+                <div> <!-- Added Complexity Slider -->
                     <label for="morph-complexity-slider" class="slider-label">Complexity:</label>
                     <input type="range" id="morph-complexity-slider" name="morph-complexity" min="8" max="64" value="32" step="4">
-                    <span id="morphComplexityValue">32</span>
+                    <span class="text-sm text-gray-400"><span id="morph-complexity-value">32</span></span>
                 </div>
-                -->
             </div>
 
             <div id="metaballs-controls" class="control-section animation-controls">
@@ -323,8 +335,9 @@
         </div>
 
         <!-- ASCII Output Area -->
-        <div class="md:col-span-2 flex flex-col"> <!-- Use flex column for sizing -->
-            <div id="ascii-output-container" class="relative flex-grow border border-gray-700 rounded-lg overflow-hidden"> <!-- Make container grow and manage overflow -->
+        <!-- Removed flex flex-col and flex-grow from this div -->
+        <div class="md:col-span-2">
+            <div id="ascii-output-container" class="relative border border-gray-700 rounded-lg overflow-hidden"> <!-- Make container grow and manage overflow -->
                 <!-- Ensure ID matches script.js -->
                 <pre id="asciiDisplay" class="absolute inset-0 w-full h-full">Loading ASCII Animation...</pre> <!-- Position pre absolutely within container -->
             </div>
@@ -334,6 +347,9 @@
 
     <!-- Load Three.js (ensure it's available globally or adjust script.js import) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Simplex Noise for Particle Flow Field -->
+    <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.js"></script>
+
 
     <!-- Animation modules (Load BEFORE script.js) -->
     <script src="js/animations/torus.js"></script>

@@ -5,6 +5,52 @@ body {
     color: #e2e8f0; 
 }
 
+/* Add title shadow style */
+.title-shadow {
+    text-shadow: 0 0 8px rgba(147, 197, 253, 0.5); /* Subtle blue glow */
+}
+
+/* Use the correct ID from index.html */
+#asciiDisplay {
+    font-family: 'Courier New', Courier, monospace;
+    white-space: pre;
+    line-height: 1.0; /* Adjusted for calculations in script.js */
+    letter-spacing: 0;
+    font-size: 10px; /* Initial size, script.js will adjust */
+    overflow: hidden;
+    text-align: center;
+    /* background-color: #0d1117; */ /* Background is on the container */
+    /* padding: 1rem; */ /* Padding is on the container */
+    /* border-radius: 0.5rem; */ /* Border/Radius is on the container */
+    /* border: 1px solid #30363d; */ /* Border is on the container */
+    /* aspect-ratio: 16 / 9; */ /* Aspect ratio managed by container/JS */
+    /* width: 100%; */ /* Set by absolute positioning */
+    /* max-width: 100%; */ /* Set by absolute positioning */
+    /* height: auto; */ /* Set by absolute positioning */
+    box-sizing: border-box;
+    /* min-height: 50px; */ /* Container manages min-height */
+    color: #e2e8f0; /* Ensure text color is visible */
+    position: absolute; /* Keep absolute positioning */
+    inset: 0; /* Keep inset */
+    width: 100%; /* Keep width */
+    height: 100%; /* Keep height */
+}
+
+#ascii-output-container { /* Style the container */
+    background-color: #0d1117;
+    min-height: 200px; /* Ensure a minimum height */
+    border: 1px solid #30363d;
+    border-radius: 0.5rem;
+    padding: 1rem; /* Add padding here */
+    position: relative; /* Needed for absolute child */
+    width: 100%; /* Take full width of grid column */
+    aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+    box-sizing: border-box;
+    display: flex; /* Use flex to help contain the absolute child if needed */
+    align-items: center; /* Center content vertically if needed */
+    justify-content: center; /* Center content horizontally if needed */
+}
+
 #ascii-output { 
     font-family: 'Courier New', Courier, monospace; 
     white-space: pre; 
@@ -23,27 +69,6 @@ body {
     height: auto; 
     box-sizing: border-box; 
     min-height: 50px;
-}
-
-#ascii-output-container { /* Style the container */
-    background-color: #0d1117;
-    min-height: 200px; /* Ensure a minimum height */
-}
-
-#asciiDisplay { /* Adjusted styles for pre element */
-    font-family: 'Courier Prime', 'Courier New', Courier, monospace; /* Use loaded font */
-    white-space: pre;
-    line-height: 1.0; /* Adjust line height for better fit */
-    letter-spacing: 0; /* Keep tight spacing */
-    font-size: 10px; /* Base font size, will be adjusted by JS */
-    overflow: hidden;
-    text-align: center;
-    /* Removed background, padding, border, aspect-ratio, width, height - handled by container and absolute positioning */
-    /* Ensure text doesn't cause unexpected overflow */
-    margin: 0;
-    padding: 0; /* Minimal padding if needed, or handled by container */
-    box-sizing: border-box;
-    /* color: #c9d1d9; */ /* Example text color */
 }
 
 input[type="range"] { 

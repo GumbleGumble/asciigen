@@ -1,6 +1,6 @@
-// Kaleidoscope Animation
+// Kaleidoscope Animation Module
 
-// Basic Vertex Shader
+// Shader code (unchanged)
 const kaleidoscopeVertexShader = `
   varying vec2 vUv;
   void main() {
@@ -9,7 +9,6 @@ const kaleidoscopeVertexShader = `
   }
 `;
 
-// Basic Fragment Shader (Kaleidoscope + Noise)
 const kaleidoscopeFragmentShader = `
   varying vec2 vUv;
   uniform float u_time;
@@ -18,53 +17,50 @@ const kaleidoscopeFragmentShader = `
   uniform float u_noise_speed;
   uniform float u_noise_brightness;
 
-  const float PI = 3.14159265359;
-  const float TAU = PI * 2.0;
-
-  // Basic 2D random function
-  float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+  // Simple 2D noise function (replace with Simplex or Perlin if needed)
+  float random (vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
   }
 
-  // 2D Noise function (simple value noise)
-  float noise(vec2 st) {
+  float noise (vec2 st) {
     vec2 i = floor(st);
     vec2 f = fract(st);
-    vec2 u = f * f * (3.0 - 2.0 * f); // Smoothstep
+
     float a = random(i);
     float b = random(i + vec2(1.0, 0.0));
     float c = random(i + vec2(0.0, 1.0));
     float d = random(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+
+    vec2 u = f * f * (3.0 - 2.0 * f); // Smoothstep interpolation
+
+    return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
   }
 
   void main() {
-    vec2 center = vec2(0.5, 0.5);
-    vec2 uv = vUv - center; // Center UVs
-
-    float angle = atan(uv.y, uv.x);
-    float radius = length(uv);
+    vec2 p = vUv - 0.5; // Center coordinates
+    float angle = atan(p.y, p.x);
+    float radius = length(p);
 
     // Kaleidoscope effect
-    float segmentAngle = TAU / u_segments;
+    float segmentAngle = 3.1415926535 * 2.0 / u_segments;
     angle = mod(angle, segmentAngle);
-    angle = abs(angle - segmentAngle * 0.5); // Mirror within segment
+    angle = abs(angle - segmentAngle / 2.0); // Mirror within segment
 
-    // Reconstruct UVs
-    vec2 kalUv = vec2(cos(angle), sin(angle)) * radius;
+    // Convert back to Cartesian coordinates for noise sampling
+    vec2 mirroredP = vec2(cos(angle), sin(angle)) * radius;
 
-    // Apply noise based on kaleidoscope UVs
-    vec2 noiseUv = kalUv * u_noise_scale + vec2(u_time * u_noise_speed * 0.1, u_time * u_noise_speed * 0.05);
-    float noiseValue = noise(noiseUv);
+    // Sample noise based on mirrored coordinates and time
+    vec2 noiseCoord = mirroredP * u_noise_scale + vec2(u_time * u_noise_speed * 0.1, u_time * u_noise_speed * 0.05);
+    float noiseValue = noise(noiseCoord);
 
-    float brightness = (noiseValue * 0.5 + 0.5) * u_noise_brightness;
-    gl_FragColor = vec4(vec3(brightness), 1.0);
+    gl_FragColor = vec4(vec3(noiseValue * u_noise_brightness), 1.0);
   }
 `;
 
+
 function setupKaleidoscopeAnimation() {
-    console.log("Setting up Kaleidoscope animation (placeholder)");
-    const geometry = new THREE.PlaneGeometry(10, 10);
+    console.log("Setting up Kaleidoscope animation");
+    const geometry = new THREE.PlaneGeometry(10, 10); // Simple plane
     const material = new THREE.ShaderMaterial({
         vertexShader: kaleidoscopeVertexShader,
         fragmentShader: kaleidoscopeFragmentShader,
@@ -85,15 +81,15 @@ function setupKaleidoscopeAnimation() {
     animationObjects.material = material;
     animationObjects.geometry = geometry;
 
-    // Add listeners if not already in script.js
-    kaleidoscopeControls.sliderSegments.addEventListener('input', handleKaleidoscopeParamChange);
-    kaleidoscopeControls.sliderNoiseScale.addEventListener('input', handleKaleidoscopeParamChange);
-    kaleidoscopeControls.sliderNoiseSpeed.addEventListener('input', handleKaleidoscopeParamChange);
-    kaleidoscopeControls.sliderNoiseBrightness.addEventListener('input', handleKaleidoscopeParamChange);
+    // Add listeners (handled in script.js, ensure handleKaleidoscopeParamChange exists)
+    // kaleidoscopeControls.sliderSegments.addEventListener('input', handleKaleidoscopeParamChange);
+    // kaleidoscopeControls.sliderNoiseScale.addEventListener('input', handleKaleidoscopeParamChange);
+    // kaleidoscopeControls.sliderNoiseSpeed.addEventListener('input', handleKaleidoscopeParamChange);
+    // kaleidoscopeControls.sliderNoiseBrightness.addEventListener('input', handleKaleidoscopeParamChange);
 }
 
 function cleanupKaleidoscopeAnimation() {
-    console.log("Cleaning up Kaleidoscope animation (placeholder)");
+    console.log("Cleaning up Kaleidoscope animation");
     if (animationObjects.mesh) {
         scene.remove(animationObjects.mesh);
         if (animationObjects.geometry) animationObjects.geometry.dispose();
@@ -103,16 +99,17 @@ function cleanupKaleidoscopeAnimation() {
     animationObjects.material = null;
     animationObjects.geometry = null;
 
-    // Remove listeners
-    kaleidoscopeControls.sliderSegments.removeEventListener('input', handleKaleidoscopeParamChange);
-    kaleidoscopeControls.sliderNoiseScale.removeEventListener('input', handleKaleidoscopeParamChange);
-    kaleidoscopeControls.sliderNoiseSpeed.removeEventListener('input', handleKaleidoscopeParamChange);
-    kaleidoscopeControls.sliderNoiseBrightness.removeEventListener('input', handleKaleidoscopeParamChange);
+    // Remove listeners (handled in script.js)
+    // kaleidoscopeControls.sliderSegments.removeEventListener('input', handleKaleidoscopeParamChange);
+    // kaleidoscopeControls.sliderNoiseScale.removeEventListener('input', handleKaleidoscopeParamChange);
+    // kaleidoscopeControls.sliderNoiseSpeed.removeEventListener('input', handleKaleidoscopeParamChange);
+    // kaleidoscopeControls.sliderNoiseBrightness.removeEventListener('input', handleKaleidoscopeParamChange);
 }
 
 // Handler for Kaleidoscope parameter changes
 function handleKaleidoscopeParamChange() {
-    if (currentAnimation !== 'kaleidoscope' || !animationObjects.material) return;
+    // Check if currentAnimationType is defined globally (from script.js)
+    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'kaleidoscope' || !animationObjects.material) return;
 
     const segments = Number.parseFloat(kaleidoscopeControls.sliderSegments.value);
     const noiseScale = Number.parseFloat(kaleidoscopeControls.sliderNoiseScale.value);
@@ -125,14 +122,17 @@ function handleKaleidoscopeParamChange() {
     animationObjects.material.uniforms.u_noise_brightness.value = noiseBrightness;
 
     // Update UI labels (already done in script.js listener)
+	if (uiElements.kaleidoscopeNoiseBrightnessValue)
+		uiElements.kaleidoscopeNoiseBrightnessValue.textContent =
+			brightness.toFixed(1);
 }
 
 // Animation update function for Kaleidoscope
 function updateKaleidoscopeAnimation(deltaTime, elapsedTime) {
     if (!animationObjects.material) return;
-    // Speed is now controlled by the uniform which is updated in handleKaleidoscopeParamChange
-    // We just need to update time
-    animationObjects.material.uniforms.u_time.value = elapsedTime;
+    // Read speed from the slider *within* the update loop
+    const speed = Number.parseFloat(kaleidoscopeControls.sliderNoiseSpeed.value);
+    animationObjects.material.uniforms.u_time.value = elapsedTime * speed;
 }
 
 function randomizeKaleidoscopeParameters() {
@@ -145,13 +145,13 @@ function randomizeKaleidoscopeParameters() {
     ];
 
     for (const slider of sliders) {
+         if (!slider) continue;
         const min = Number.parseFloat(slider.min);
         const max = Number.parseFloat(slider.max);
         const step = Number.parseFloat(slider.step) || (max - min) / 100;
-        const randomValue = min + Math.random() * (max - min);
-        slider.value = (Math.round(randomValue / step) * step).toFixed(
-            step.toString().includes('.') ? step.toString().split('.')[1].length : 0
-        );
+        const range = max - min;
+        const randomSteps = Math.floor(Math.random() * (range / step + 1));
+        slider.value = min + randomSteps * step;
         // Trigger input event to update uniforms via handleKaleidoscopeParamChange and labels via script.js
         slider.dispatchEvent(new Event('input', { bubbles: true }));
     }
@@ -163,5 +163,5 @@ window.KALEIDOSCOPE_ANIMATION = {
     update: updateKaleidoscopeAnimation,
     cleanup: cleanupKaleidoscopeAnimation,
     randomize: randomizeKaleidoscopeParameters,
-    // handleParamChange: handleKaleidoscopeParamChange // Specific handler added
+    handleParamChange: handleKaleidoscopeParamChange // Unified handler
 };
