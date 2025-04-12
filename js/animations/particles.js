@@ -152,30 +152,31 @@ function setupParticleAnimation() {
 		new THREE.BufferAttribute(positions, 3),
 	);
 	particlesGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    particlesGeometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1)); // Add size attribute
+    particlesGeometry.setAttribute("particleSize", new THREE.BufferAttribute(sizes, 1)); // Use a distinct name like 'particleSize'
 
 	// Create particle material - Use ShaderMaterial for size/alpha control
 	const particleVertexShader = `
-        attribute float size;
-        // attribute vec3 color; // <<< REMOVE THIS LINE - It conflicts with the standard 'color' attribute added by Three.js
+        attribute float particleSize; // Use the correct attribute name
+        // 'color' attribute is automatically handled by Three.js when vertexColors = true
         varying vec3 vColor;
-        varying float vAlpha; // Varying for alpha based on lifespan
+        // varying float vAlpha; // Alpha needs lifespan info, handle in fragment shader for now
 
         uniform float baseSize; // Pass base size from slider
         uniform float sizeAttenuationFactor; // Control size attenuation
 
         void main() {
-            vColor = color;
+            vColor = color; // Pass vertex color to fragment shader
 
-            // Calculate point size based on attribute and distance
+            // Calculate point size based on attribute and base size slider
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            float pointSize = size * baseSize; // Use attribute and base size
+            float pointSize = particleSize * baseSize; // Use attribute and base size
+
             // Size attenuation (optional, THREE.PointsMaterial does this)
-            if (sizeAttenuationFactor > 0.0) {
-                 gl_PointSize = pointSize * (sizeAttenuationFactor / -mvPosition.z);
-            } else {
-                 gl_PointSize = pointSize;
-            }
+            // Make sure sizeAttenuationFactor is reasonable (e.g., viewport height / 2)
+            // gl_PointSize = pointSize * (sizeAttenuationFactor / -mvPosition.z);
+
+            // Simpler size calculation for debugging:
+            gl_PointSize = pointSize; // Start with non-attenuated size
 
             gl_Position = projectionMatrix * mvPosition;
         }
@@ -183,18 +184,17 @@ function setupParticleAnimation() {
 
     const particleFragmentShader = `
         varying vec3 vColor;
-        varying float vAlpha; // Receive alpha from vertex shader (or calculate here)
+        // varying float vAlpha; // Alpha calculation would go here if passed
 
-        uniform sampler2D pointTexture; // Texture for particle shape
+        // uniform sampler2D pointTexture; // Texture for particle shape
 
         void main() {
             // Simple circular particle shape
             float dist = length(gl_PointCoord - vec2(0.5));
-            if (dist > 0.5) discard; // Discard fragments outside circle
+            if (dist > 0.45) discard; // Slightly smaller radius to ensure visibility
 
-            // Use vertex color and potentially fade alpha
-            // Alpha calculation needs lifespan info passed via another attribute/uniform
-            // For now, just use vertex color
+            // Use vertex color
+            // Alpha could be calculated based on lifespan attribute if passed
             gl_FragColor = vec4(vColor, 1.0); // Use full alpha for now
 
             // Optional: Use texture
@@ -204,16 +204,16 @@ function setupParticleAnimation() {
 
 	const particlesMaterial = new THREE.ShaderMaterial({
         uniforms: {
-            baseSize: { value: baseSize },
-            sizeAttenuationFactor: { value: 5.0 }, // Adjust for desired attenuation
-            // pointTexture: { value: new THREE.TextureLoader().load('path/to/particle.png') } // Optional texture
+            baseSize: { value: baseSize * 10.0 }, // Multiply baseSize for initial visibility test
+            sizeAttenuationFactor: { value: 5.0 }, // Adjust later if needed
+            // pointTexture: { value: new THREE.TextureLoader().load('path/to/particle.png') }
         },
         vertexShader: particleVertexShader,
         fragmentShader: particleFragmentShader,
-        vertexColors: true, // Still needed to pass color attribute
-        blending: THREE.AdditiveBlending, // Brighter effect
-        depthWrite: false, // Prevent particles from occluding each other incorrectly
-        transparent: true,
+        vertexColors: true, // Enable vertex colors attribute ('color')
+        blending: THREE.AdditiveBlending,
+        depthWrite: false, // Crucial for blending
+        transparent: true, // Allow transparency/discard
     });
 
 
@@ -278,7 +278,8 @@ function handleParticleParamChange() {
 	// Update material base size uniform if control exists
 	if (particlesControls.sliderSize && animationObjects.particlesMaterial.uniforms.baseSize) {
 		const baseSize = Number.parseFloat(particlesControls.sliderSize.value);
-		animationObjects.particlesMaterial.uniforms.baseSize.value = baseSize;
+        // Adjust multiplier as needed for visual scale
+		animationObjects.particlesMaterial.uniforms.baseSize.value = baseSize * 10.0;
 	}
 
 	// Update max lifespan if control exists and value changed
@@ -484,7 +485,7 @@ function updateParticlesAnimation(deltaTime, elapsedTime) {
 	// Mark attributes for update
 	geometry.attributes.position.needsUpdate = true;
 	geometry.attributes.color.needsUpdate = true; // Mark colors for update
-    geometry.attributes.size.needsUpdate = true; // Mark sizes for update
+    geometry.attributes.particleSize.needsUpdate = true; // Mark the correct size attribute
 }
 
 // --- Randomization ---

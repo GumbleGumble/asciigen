@@ -67,8 +67,15 @@ function setupMorphAnimation() {
     animationObjects.morphProgress = 0; // 0 to 1 transition progress
     animationObjects.lastComplexity = complexity; // Store complexity
 
-    // Add listener for color picker (handled in script.js, ensure handler exists)
+    // Add listener for complexity slider (ensure it calls the correct handler)
+    if (uiElements.morphComplexity) {
+        // Remove previous listener if any to avoid duplicates during recreation
+        uiElements.morphComplexity.removeEventListener('input', handleMorphComplexityChange);
+        uiElements.morphComplexity.addEventListener('input', handleMorphComplexityChange);
+    }
+    // Add listener for color picker
     if (uiElements.morphColorPicker) {
+        uiElements.morphColorPicker.removeEventListener('input', handleMorphColorChange); // Avoid duplicates
         uiElements.morphColorPicker.addEventListener('input', handleMorphColorChange);
     }
 
@@ -98,7 +105,10 @@ function cleanupMorphAnimation() {
         animationObjects.material.dispose();
     }
 
-    // Remove color picker listener
+    // Remove listeners during cleanup
+    if (uiElements.morphComplexity) {
+        uiElements.morphComplexity.removeEventListener('input', handleMorphComplexityChange);
+    }
     if (uiElements.morphColorPicker) {
         uiElements.morphColorPicker.removeEventListener('input', handleMorphColorChange);
     }
@@ -118,12 +128,14 @@ function handleMorphComplexityChange() {
     // Check if currentAnimationType is defined globally (from script.js)
     if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'morph') return;
     // Ensure control and animationObjects exist
-    if (!morphControls.sliderComplexity || !animationObjects.lastComplexity) return;
+    if (!uiElements.morphComplexity || animationObjects.lastComplexity === undefined) return; // Check existence
 
-    const newComplexity = Number.parseInt(morphControls.sliderComplexity.value);
+    const newComplexity = Number.parseInt(uiElements.morphComplexity.value);
     // Check if complexity actually changed
     if (newComplexity !== animationObjects.lastComplexity) {
         console.log("Morph complexity changed, recreating...");
+        // Store the new complexity *before* cleanup/setup to avoid infinite loops if setup fails
+        // animationObjects.lastComplexity = newComplexity; // Set this within setup instead
         cleanupMorphAnimation();
         setupMorphAnimation(); // Recreate with new complexity
     } else {
@@ -140,79 +152,90 @@ function handleMorphColorChange() {
 }
 
 function updateMorphAnimation(deltaTime, elapsedTime) {
-    if (!animationObjects.mesh || !animationObjects.geometries || animationObjects.geometries.length === 0 || !morphControls.sliderMorphSpeed || !morphControls.sliderRotationSpeed) {
-        // console.warn("Morph update prerequisites not met."); // Uncomment for debugging
+    if (!animationObjects.mesh || !animationObjects.geometries || animationObjects.geometries.length < 2 || !morphControls.sliderMorphSpeed || !morphControls.sliderRotationSpeed) {
+        // console.warn("Morph update prerequisites not met.");
         return;
     }
 
     const mesh = animationObjects.mesh;
     const geometries = animationObjects.geometries;
-    // Ensure sliders exist before reading value, provide default
     const morphSpeed = Number.parseFloat(morphControls.sliderMorphSpeed?.value || 1.0);
     const rotationSpeed = Number.parseFloat(morphControls.sliderRotationSpeed?.value || 0.5);
+    // Ensure deltaTime is valid, provide fallback
+    const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? Math.min(deltaTime, 0.05) : (1/60);
 
-    // Update rotation
-    mesh.rotation.x += deltaTime * rotationSpeed * 0.3;
-    mesh.rotation.y += deltaTime * rotationSpeed * 0.5;
-    mesh.rotation.z += deltaTime * rotationSpeed * 0.2;
+    // --- Debug Log ---
+    // console.log(`Morph Update - dt: ${dt.toFixed(4)}, morphSpeed: ${morphSpeed}, rotationSpeed: ${rotationSpeed}, progress: ${animationObjects.morphProgress.toFixed(3)}`); // Uncomment for debugging
 
-    // Update morph progress
-    animationObjects.morphProgress += deltaTime * morphSpeed;
-    // console.log("Morph Progress:", animationObjects.morphProgress); // Uncomment for debugging
+    // Update rotation only if speed is non-zero
+    if (Math.abs(rotationSpeed) > 0.001) {
+        mesh.rotation.x += dt * rotationSpeed * 0.3;
+        mesh.rotation.y += dt * rotationSpeed * 0.5;
+        mesh.rotation.z += dt * rotationSpeed * 0.2;
+        mesh.rotation.x %= (Math.PI * 2);
+        mesh.rotation.y %= (Math.PI * 2);
+        mesh.rotation.z %= (Math.PI * 2);
+    }
 
-    // --- Corrected Scale Transition Logic ---
+    // Update morph progress only if speed is non-zero
+    if (Math.abs(morphSpeed) > 0.001) {
+        animationObjects.morphProgress += dt * morphSpeed;
+    } else {
+        // If speed is zero, ensure progress doesn't accidentally advance due to potential dt issues
+        // return; // Or just skip the morph logic below
+    }
+
     const progress = animationObjects.morphProgress;
-    const transitionDuration = 1.0; // Total time for one morph (scale down + scale up)
+    // const transitionDuration = 1.0 / Math.max(0.1, morphSpeed); // Not directly used in scale logic
 
-    if (progress >= transitionDuration) {
-        // console.log("Morph transition complete."); // Uncomment for debugging
-        // Transition complete: Finalize target shape and prepare for next
+    const currentGeomIndex = animationObjects.currentShapeIndex;
+    const targetGeomIndex = animationObjects.targetShapeIndex;
+    const currentGeom = geometries[currentGeomIndex];
+    const targetGeom = geometries[targetGeomIndex];
+
+    if (progress >= 1.0) {
+        // Transition complete
         animationObjects.morphProgress = 0; // Reset progress
-        animationObjects.currentShapeIndex = animationObjects.targetShapeIndex;
-        animationObjects.targetShapeIndex = (animationObjects.targetShapeIndex + 1) % geometries.length;
+        animationObjects.currentShapeIndex = targetGeomIndex;
+        animationObjects.targetShapeIndex = (targetGeomIndex + 1) % geometries.length;
 
         // Ensure mesh has the correct final geometry and scale
-        const finalGeometry = geometries[animationObjects.currentShapeIndex];
-        if (mesh.geometry !== finalGeometry) {
-            // console.log("Switching to final geometry:", animationObjects.currentShapeIndex); // Uncomment for debugging
-            // Dispose old geometry before assigning new one IF it's not in the geometries array anymore
-            // (Not strictly necessary here as we cycle through the array)
-            // if (mesh.geometry && !geometries.includes(mesh.geometry)) {
-            //     mesh.geometry.dispose();
-            // }
-            mesh.geometry = finalGeometry;
+        if (mesh.geometry !== targetGeom) {
+            mesh.geometry = targetGeom;
         }
-        mesh.scale.setScalar(1.0); // Ensure final scale is 1
-        mesh.visible = true; // Ensure visibility
+        mesh.scale.setScalar(1.0);
+        mesh.visible = true;
+        // console.log(`Morph complete, switched to index ${animationObjects.currentShapeIndex}`); // Debug log
 
+    } else if (progress < 0) {
+        // Handle potential negative progress if speed is negative (optional reverse morph)
+        animationObjects.morphProgress = 1.0; // Wrap around or clamp
+        // Or implement reverse logic if desired
     } else {
-        // Mid-transition: Apply scaling effect
-        const halfDuration = transitionDuration / 2.0; // Use const
+        // Mid-transition: Scale down current, scale up target
+        const halfProgress = 0.5;
         let scaleFactor = 1.0;
-        const currentGeomIndex = animationObjects.currentShapeIndex; // Use const
-        const targetGeomIndex = animationObjects.targetShapeIndex; // Use const
+        let activeGeom = currentGeom; // Track which geometry should be active
 
-        if (progress < halfDuration) {
-            // Scaling down the current shape (0.0 to halfDuration -> 1.0 to 0.0 scale)
-            scaleFactor = 1.0 - (progress / halfDuration);
-            if (mesh.geometry !== geometries[currentGeomIndex]) {
-                // console.log("Switching to current geometry (scale down):", currentGeomIndex); // Uncomment for debugging
-                mesh.geometry = geometries[currentGeomIndex];
-            }
+        if (progress < halfProgress) {
+            // Scaling down current shape (progress 0 to 0.5 -> scale 1 to 0)
+            scaleFactor = 1.0 - (progress / halfProgress);
+            activeGeom = currentGeom;
         } else {
-            // Scaling up the target shape (halfDuration to transitionDuration -> 0.0 to 1.0 scale)
-            scaleFactor = (progress - halfDuration) / halfDuration;
-            if (mesh.geometry !== geometries[targetGeomIndex]) {
-                 // console.log("Switching to target geometry (scale up):", targetGeomIndex); // Uncomment for debugging
-                mesh.geometry = geometries[targetGeomIndex];
-            }
+            // Scaling up target shape (progress 0.5 to 1.0 -> scale 0 to 1)
+            scaleFactor = (progress - halfProgress) / halfProgress;
+            activeGeom = targetGeom;
         }
 
-        // Apply scale using smoothstep for smoother transition
+        // Switch geometry if needed
+        if (mesh.geometry !== activeGeom) {
+            mesh.geometry = activeGeom;
+        }
+
+        // Apply smoothstep for smoother scaling
         const smoothScale = scaleFactor * scaleFactor * (3.0 - 2.0 * scaleFactor);
-        mesh.scale.setScalar(Math.max(0.001, smoothScale)); // Apply scale, avoid zero scale
-        mesh.visible = mesh.scale.x > 0.001; // Hide if scale is effectively zero
-        // console.log(`Morph Scale: ${mesh.scale.x.toFixed(3)}, Visible: ${mesh.visible}`); // Uncomment for debugging
+        mesh.scale.setScalar(Math.max(0.001, smoothScale)); // Apply scale, avoid zero
+        mesh.visible = mesh.scale.x > 0.001;
     }
 }
 
@@ -239,7 +262,21 @@ function randomizeMorphParameters() {
         // Trigger input event to update labels via script.js and potentially trigger recreation
         slider.dispatchEvent(new Event("input", { bubbles: true }));
     }
-    // Complexity change is handled by the 'input' event listener calling handleComplexityChange
+
+    // Ensure complexity slider randomization triggers the input event
+    const complexitySlider = morphControls.sliderComplexity;
+    if (complexitySlider) {
+        // ... (randomize value as before) ...
+        complexitySlider.dispatchEvent(new Event("input", { bubbles: true })); // Ensure event is dispatched
+    }
+
+    // Randomize color picker
+    const colorPicker = uiElements.morphColorPicker;
+    if (colorPicker) {
+        const randomColor = new THREE.Color(Math.random(), Math.random(), Math.random());
+        colorPicker.value = `#${randomColor.getHexString()}`;
+        colorPicker.dispatchEvent(new Event("input", { bubbles: true })); // Trigger color change handler
+    }
 }
 
 // Make functions available to the main script
@@ -251,5 +288,5 @@ window.MORPH_ANIMATION = {
     handleSpeedChange: () => { updateAllValueDisplays(); },
     handleRotationSpeedChange: () => { updateAllValueDisplays(); },
     handleComplexityChange: handleMorphComplexityChange,
-    handleColorChange: handleMorphColorChange, // Added
+    handleColorChange: handleMorphColorChange, // Ensure this is exposed
 };

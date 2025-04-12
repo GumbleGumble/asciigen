@@ -60,8 +60,10 @@ function setupTorusAnimation() {
 	animationObjects.geometry = geometry; // Store geometry reference for potential disposal
 	animationObjects.material = material; // Store material reference
 
-	// Add event listeners (handled in script.js)
+	// Add event listener for color picker (ensure it's added correctly)
 	if (uiElements.torusColorPicker) {
+        // Remove previous listener if any to avoid duplicates
+        uiElements.torusColorPicker.removeEventListener('input', handleTorusColorChange);
 		uiElements.torusColorPicker.addEventListener('input', handleTorusColorChange);
 	}
 
@@ -77,7 +79,7 @@ function cleanupTorusAnimation() {
 		if (animationObjects.geometry) animationObjects.geometry.dispose();
 		if (animationObjects.material) animationObjects.material.dispose();
 	}
-	// Remove color picker listener
+	// Remove color picker listener during cleanup
 	if (uiElements.torusColorPicker) {
 		uiElements.torusColorPicker.removeEventListener('input', handleTorusColorChange);
 	}
@@ -142,16 +144,15 @@ function handleTorusMaterialChange() {
 }
 
 // Handles changes to color property
-function handleTorusColorChange() {
-	// Check if torus is the current animation and objects/UI exist
-	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "torus" || !animationObjects.material || !uiElements.torusColorPicker) {
-        // console.warn("handleTorusColorChange prerequisites not met."); // Uncomment for debugging
+function handleTorusColorChange(event) { // Can accept event argument
+	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "torus" || !animationObjects.material || !event?.target) {
+        // console.warn("handleTorusColorChange prerequisites not met.");
         return;
     }
     try {
-        const newColor = uiElements.torusColorPicker.value;
-        // console.log("Torus color changed:", newColor); // Uncomment for debugging
-	    animationObjects.material.color.set(newColor);
+        const newColor = event.target.value; // Get value from the event target
+        // console.log("Torus color changed:", newColor); // Debug log
+	    animationObjects.material.color.set(newColor); // Set the color on the material
     } catch (error) {
         console.error("Error setting torus color:", error);
     }
@@ -159,17 +160,27 @@ function handleTorusColorChange() {
 
 function updateTorusAnimation(deltaTime, elapsedTime) {
 	if (!animationObjects.torus || !torusControls.sliderSpeed || !uiElements.torusRotationAxis) {
-        // console.warn("Torus update prerequisites not met."); // Uncomment for debugging
+        // console.warn("Torus update prerequisites not met.");
         return;
     }
+    // Ensure deltaTime is a valid, positive number before clamping
+    const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? Math.min(deltaTime, 0.05) : (1/60); // Use fallback if deltaTime is invalid
 
 	// Get rotation speed and axis from controls
 	const rotationSpeed = Number.parseFloat(torusControls.sliderSpeed.value);
-	const rotationAxis = uiElements.torusRotationAxis.value; // Use uiElements directly
+	const rotationAxis = uiElements.torusRotationAxis.value;
+
+    // Check if speed is non-zero
+    if (Math.abs(rotationSpeed) < 0.001) {
+        // console.log("Torus rotation speed is near zero."); // Debug log
+        return; // No rotation needed if speed is zero
+    }
 
 	// Apply rotation based on selected axis
-	const rotationAmount = deltaTime * rotationSpeed;
-    // console.log(`Torus Update - dt: ${deltaTime.toFixed(4)}, speed: ${rotationSpeed}, axis: ${rotationAxis}, amount: ${rotationAmount.toFixed(4)}`); // Uncomment for debugging
+	const rotationAmount = dt * rotationSpeed;
+
+    // --- Debug Log ---
+    // console.log(`Torus Update - dt: ${dt.toFixed(4)}, speed: ${rotationSpeed}, axis: ${rotationAxis}, amount: ${rotationAmount.toFixed(4)}`); // Uncomment for debugging
 
 	switch (rotationAxis) {
 		case "x":
@@ -181,22 +192,22 @@ function updateTorusAnimation(deltaTime, elapsedTime) {
 		case "z":
 			animationObjects.torus.rotation.z += rotationAmount;
 			break;
-		case "xy": // Example: Combined axis
-			animationObjects.torus.rotation.x += rotationAmount * Math.SQRT1_2; // Use Math.SQRT1_2 for 1/sqrt(2)
-			animationObjects.torus.rotation.y += rotationAmount * Math.SQRT1_2; // Use Math.SQRT1_2 for 1/sqrt(2)
+		case "xy":
+			animationObjects.torus.rotation.x += rotationAmount * Math.SQRT1_2;
+			animationObjects.torus.rotation.y += rotationAmount * Math.SQRT1_2;
 			break;
-        case "xyz": // Tumble
-            animationObjects.torus.rotation.x += rotationAmount * 0.6; // Adjust multipliers for desired tumble
-            animationObjects.torus.rotation.y += rotationAmount * 0.7;
-            animationObjects.torus.rotation.z += rotationAmount * 0.8;
+        case "xyz":
+            animationObjects.torus.rotation.x += rotationAmount * 0.577; // Approx 1/sqrt(3)
+            animationObjects.torus.rotation.y += rotationAmount * 0.577;
+            animationObjects.torus.rotation.z += rotationAmount * 0.577;
             break;
 		default: // Default to Y
 			animationObjects.torus.rotation.y += rotationAmount;
 	}
-    // Normalize rotations periodically to prevent potential floating point issues if needed
-    // animationObjects.torus.rotation.x %= Math.PI * 2;
-    // animationObjects.torus.rotation.y %= Math.PI * 2;
-    // animationObjects.torus.rotation.z %= Math.PI * 2;
+    // Keep rotations within reasonable bounds (optional, helps prevent potential precision issues)
+    animationObjects.torus.rotation.x %= (Math.PI * 2);
+    animationObjects.torus.rotation.y %= (Math.PI * 2);
+    animationObjects.torus.rotation.z %= (Math.PI * 2);
 }
 
 function randomizeTorusParameters() {
@@ -244,4 +255,11 @@ function randomizeTorusParameters() {
 	// UI label updates are also handled by the listeners triggered by the events.
 	// Explicitly call updateAllValueDisplays from script.js after randomization if needed,
 	// but the dispatched events should cover it.
+    // Ensure color picker randomization triggers the input event
+    const colorPicker = uiElements.torusColorPicker;
+    if (colorPicker) {
+        const randomColor = new THREE.Color(Math.random(), Math.random(), Math.random());
+        colorPicker.value = `#${randomColor.getHexString()}`;
+        colorPicker.dispatchEvent(new Event("input", { bubbles: true })); // Trigger color change handler
+    }
 }

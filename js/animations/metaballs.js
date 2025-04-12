@@ -149,7 +149,9 @@ function initializeMetaballs() {
 			// Velocity (random direction and magnitude based on speed slider)
 			const angle = Math.random() * Math.PI * 2;
 			// Use the actual speed slider value for initial velocity magnitude
-			const velMag = speed * (0.5 + Math.random() * 0.5); // Speed variation
+			// Ensure speed is not zero to avoid zero velocity
+			const baseSpeed = Math.max(0.01, speed); // Use a minimum speed
+			const velMag = baseSpeed * (0.75 + Math.random() * 0.5); // Speed variation around the slider value
 			velocities[i2] = Math.cos(angle) * velMag;
 			velocities[i2 + 1] = Math.sin(angle) * velMag;
             // Log initial velocity for the first ball
@@ -214,55 +216,78 @@ function handleMetaballsParamChange() {
 function updateMetaballsAnimation(deltaTime, elapsedTime) {
 	if (!animationObjects.material || !animationObjects.metaballData || !animationObjects.metaballVelocities || !metaballsControls.sliderSpeed) return;
 
+	// Ensure deltaTime is valid, provide fallback
+    const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? Math.min(deltaTime, 0.05) : (1/60);
+
 	const speed = Number.parseFloat(metaballsControls.sliderSpeed.value); // Read current speed
 	const data = animationObjects.metaballData;
 	const velocities = animationObjects.metaballVelocities;
 	const numBalls = animationObjects.material.uniforms.u_num_metaballs.value;
 	const bounds = 4.0; // Movement bounds, should match initialization
 
-    // Log delta time and speed once per frame if they seem problematic
-    // console.log(`Metaballs Update - dt: ${deltaTime.toFixed(4)}, speed: ${speed}`); // Uncomment for debugging
+    // Check if speed is effectively zero
+    if (Math.abs(speed) < 0.001) {
+        // console.log("Metaballs speed is near zero."); // Debug log
+        // Update time uniform but skip position updates
+        animationObjects.material.uniforms.u_time.value = elapsedTime;
+        return;
+    }
+
+    // --- Debug Log ---
+    // if (Math.random() < 0.01) { // Log occasionally
+    //     console.log(`Metaballs Update - dt: ${dt.toFixed(4)}, speed: ${speed}`);
+    // }
 
 	for (let i = 0; i < numBalls; i++) {
 		const i3 = i * 3;
 		const i2 = i * 2;
 
-        // const oldX = data[i3]; // Store old position for logging
-        // const oldY = data[i3 + 1];
-
-		// Update position based on velocity, speed slider, and delta time
-        // Make sure velocity itself isn't zero
         const currentVelX = velocities[i2];
         const currentVelY = velocities[i2 + 1];
-        const deltaX = currentVelX * deltaTime * speed;
-        const deltaY = currentVelY * deltaTime * speed;
+
+        // Check if velocity is non-zero before calculating delta
+        if (Math.abs(currentVelX) < 1e-6 && Math.abs(currentVelY) < 1e-6) {
+            // if (i === 0) console.log("Ball 0 velocity is zero."); // Debug log
+            continue; // Skip update if velocity is zero
+        }
+
+		// Update position based on velocity, speed slider, and clamped delta time
+		const deltaX = currentVelX * dt * speed; // Apply speed multiplier here
+		const deltaY = currentVelY * dt * speed; // Apply speed multiplier here
 
 		data[i3] += deltaX;
 		data[i3 + 1] += deltaY;
 
-        // Log movement for the first ball if significant
-        if (i === 0 && (Math.abs(deltaX) > 1e-5 || Math.abs(deltaY) > 1e-5)) {
-             // console.log(`Ball 0 moved by (${deltaX.toFixed(4)}, ${deltaY.toFixed(4)}). Pos: (${data[i3].toFixed(2)}, ${data[i3+1].toFixed(2)}). Vel: (${currentVelX.toFixed(3)}, ${currentVelY.toFixed(3)}). Speed: ${speed}, dt: ${deltaTime.toFixed(4)}`); // Uncomment for debugging
-        }
-
+        // --- Debug Log for Ball 0 ---
+        // if (i === 0 && (Math.abs(deltaX) > 1e-5 || Math.abs(deltaY) > 1e-5)) {
+        //      console.log(`Ball 0 moved by (${deltaX.toFixed(4)}, ${deltaY.toFixed(4)}). Pos: (${data[i3].toFixed(2)}, ${data[i3+1].toFixed(2)}). Vel: (${currentVelX.toFixed(3)}, ${currentVelY.toFixed(3)}). Speed: ${speed}, dt: ${dt.toFixed(4)}`);
+        // }
 
 		// Boundary collision (simple reflection)
+        let collided = false;
 		if (Math.abs(data[i3]) > bounds) {
-			velocities[i2] *= -1; // Reverse x-velocity
-			data[i3] = Math.sign(data[i3]) * bounds; // Clamp position to boundary
-            // if (i === 0) console.log("Ball 0 hit X boundary"); // Uncomment for debugging
+            if (Math.sign(data[i3]) === Math.sign(velocities[i2])) { // Only reflect if moving outwards
+			    velocities[i2] *= -1;
+                collided = true;
+                // if (i === 0) console.log("Ball 0 reflected X");
+            }
+			data[i3] = Math.sign(data[i3]) * bounds; // Clamp position
 		}
 		if (Math.abs(data[i3 + 1]) > bounds) {
-			velocities[i2 + 1] *= -1; // Reverse y-velocity
-			data[i3 + 1] = Math.sign(data[i3 + 1]) * bounds; // Clamp position to boundary
-            // if (i === 0) console.log("Ball 0 hit Y boundary"); // Uncomment for debugging
+             if (Math.sign(data[i3 + 1]) === Math.sign(velocities[i2 + 1])) { // Only reflect if moving outwards
+			    velocities[i2 + 1] *= -1;
+                collided = true;
+                // if (i === 0) console.log("Ball 0 reflected Y");
+            }
+			data[i3 + 1] = Math.sign(data[i3 + 1]) * bounds; // Clamp position
 		}
 	}
 
 	// Update uniforms
 	animationObjects.material.uniforms.u_time.value = elapsedTime;
-	animationObjects.material.uniforms.u_metaballs.value = data; // Pass the updated data array
-	// animationObjects.material.uniforms.u_metaballs.needsUpdate = true; // Usually not needed for Float32Array
+	animationObjects.material.uniforms.u_metaballs.value = data;
+    // Mark the uniform as needing update if necessary (usually not for Float32Array, but doesn't hurt)
+    animationObjects.material.uniforms.u_metaballs.needsUpdate = true;
 }
 
 function randomizeMetaballsParameters() {

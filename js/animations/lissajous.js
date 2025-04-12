@@ -304,6 +304,8 @@ function lerp(start, end, t) {
 function updateLissajousAnimation(deltaTime, elapsedTime) {
     if (!animationObjects.line || !animationObjects.positions || !animationObjects.colors || !clock || !animationObjects.pointCount) return;
 
+    const dt = Math.min(deltaTime, 0.05); // Clamp delta time
+
     const params = getCurrentLissajousParameters(elapsedTime);
     const positions = animationObjects.positions;
     const colors = animationObjects.colors;
@@ -320,8 +322,10 @@ function updateLissajousAnimation(deltaTime, elapsedTime) {
     const ampB = Number.isFinite(params.ampB) ? params.ampB : 3;
     const speed = Number.isFinite(params.speed) ? params.speed : 1;
 
-    // Calculate how many new points to add this frame based on speed and deltaTime
-    const pointsToAdd = Math.max(1, Math.floor(deltaTime * speed * 60)); // Increased multiplier for potentially smoother drawing at lower speeds
+    // Calculate how many new points to add this frame based on speed and dt
+    // Adjust multiplier based on desired trail length and speed perception
+    const pointsPerSecondBase = 100; // Base number of points added per second at speed = 1
+    const pointsToAdd = Math.max(1, Math.floor(dt * speed * pointsPerSecondBase));
 
     const tempColor = new THREE.Color(); // Reuse color object
     const hueShiftSpeed = 0.03; // Slow hue shift over time
@@ -343,7 +347,7 @@ function updateLissajousAnimation(deltaTime, elapsedTime) {
 
         // Set the color of the new point to full brightness (e.g., based on hue)
         const currentHue = (baseHue + (elapsedTime * hueShiftSpeed)) % 1.0; // Slowly shift base hue
-        tempColor.setHSL(currentHue, 1, 0.5);
+        tempColor.setHSL(currentHue, 1, 0.6); // Slightly brighter base lightness
         colors[i3] = tempColor.r;
         colors[i3 + 1] = tempColor.g;
         colors[i3 + 2] = tempColor.b;
@@ -353,7 +357,8 @@ function updateLissajousAnimation(deltaTime, elapsedTime) {
     }
 
     // Fade out older points
-    const fadeRate = deltaTime * 1.5; // Adjust fade speed
+    // Adjust fadeRate: higher value = faster fade, shorter trail
+    const fadeRate = dt * 2.0; // Experiment with this value (e.g., 1.0, 1.5, 2.0, 3.0)
     for (let i = 0; i < pointCount; i++) {
         const i3 = i * 3;
         // Check if this point was just added - skip fading if so (optional optimization)

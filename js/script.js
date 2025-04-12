@@ -1089,69 +1089,39 @@ function renderToAscii() {
 }
 
 // --- Animation Loop ---
-function animate() { // Removed currentTime parameter as it's unused
-    // console.log("animate called"); // Add log here
-	// Avoid parameter reassignment for currentTime
-	const elapsedSeconds = clock.getElapsedTime(); // Use THREE.Clock's elapsed time
-	const delta = clock.getDelta(); // Use THREE.Clock's delta time
-    const now = performance.now(); // Use performance.now() for GIF timing
-
-	if (!isPaused) {
-        // console.log("Animation running..."); // Log inside loop if needed (can be noisy)
-		// Update camera zoom (already handled by slider listener, but ensure matrix is updated)
-		// camera.fov = 75 - Number.parseFloat(uiElements.zoom.value); // Adjust FOV based on zoom
-		// camera.updateProjectionMatrix(); // FOV change requires projection matrix update
-
-        // Subtle global camera rotation (can be overridden by specific animation updates)
-        if (camera && currentAnimationType !== 'lissajous') { // Example: Don't apply global rotation to lissajous
-            // camera.rotation.y += delta * 0.01; // Slow rotation around Y axis
-            // camera.rotation.x += delta * 0.005; // Slow rotation around X axis
-        }
-
-        // Subtle background hue shift
-        if (scene?.background) {
-            const baseHue = 0.6; // Blueish base
-            const hueShift = Math.sin(elapsedSeconds * 0.05) * 0.05; // Slow oscillation
-            scene.background.setHSL((baseHue + hueShift) % 1.0, 0.1, 0.05); // Dark, low saturation
-        }
-
-
-		// Get the update function from the current animation's module
-		const currentAnimationModule = window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal for key
-		if (currentAnimationModule?.update) { // Use optional chaining
-			try {
-				// Pass delta and elapsedTime (or just rely on global clock if modules use it)
-				currentAnimationModule.update(delta, elapsedSeconds);
-			} catch (error) {
-				console.error(`Error during ${currentAnimationType} update:`, error); // Use template literal and log error object
-				// Optionally pause or switch to a default animation on error
-				togglePause(); // Pause on error to prevent spamming
-                alert(`Error in animation update: ${error.message}. Pausing animation.`);
-			}
-		} else {
-			// console.warn(`Update function for animation type "${currentAnimationType}" not found.`);
-		}
-
-		// Render the frame to ASCII
-		renderToAscii();
-
-        // Add frame to GIF if recording
-        if (isRecordingGif && gifEncoder && downscaleCanvas && now >= lastGifFrameTime + GIF_FRAME_DELAY) {
-            addFrameToGif();
-            lastGifFrameTime = now;
-
-            // Check if recording duration is over
-            if (now >= gifRecordStartTime + GIF_RECORD_DURATION) {
-                stopGifRecording();
-            }
-        }
-
-	} else if (isRecordingGif) {
-        // If paused but recording was active, stop recording
-        stopGifRecording();
-    }
+function animate() {
+	if (isPaused) {
+		// If paused, still request the next frame but don't update/render
+		animationFrameId = requestAnimationFrame(animate);
+		return;
+	}
 
 	animationFrameId = requestAnimationFrame(animate);
+
+	// Get time delta for animation updates
+	const deltaTime = clock.getDelta();
+	const elapsedTime = clock.getElapsedTime();
+
+    // --- Debug Log for DeltaTime ---
+    // console.log(`Animate Loop - deltaTime: ${deltaTime.toFixed(5)}`); // Uncomment for debugging
+
+	// Update current animation
+	const currentAnimationModule = window[`${currentAnimationType.toUpperCase()}_ANIMATION`];
+	if (currentAnimationModule?.update) {
+		try {
+			currentAnimationModule.update(deltaTime, elapsedTime);
+		} catch (error) {
+			console.error(`Error during ${currentAnimationType} update:`, error);
+			// Optionally pause or switch to a default animation on error
+			// togglePause();
+		}
+	}
+
+	// Render the scene to ASCII
+	renderToAscii();
+
+    // Add frame to GIF if recording
+    addFrameToGif(); // Checks internally if recording is active
 }
 
 // --- Control Functions ---
