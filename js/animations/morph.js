@@ -117,28 +117,37 @@ function cleanupMorphAnimation() {
 function handleMorphComplexityChange() {
     // Check if currentAnimationType is defined globally (from script.js)
     if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'morph') return;
-    if (!morphControls.sliderComplexity) return;
+    // Ensure control and animationObjects exist
+    if (!morphControls.sliderComplexity || !animationObjects.lastComplexity) return;
 
     const newComplexity = Number.parseInt(morphControls.sliderComplexity.value);
-    if (animationObjects.lastComplexity !== undefined && newComplexity !== animationObjects.lastComplexity) {
+    // Check if complexity actually changed
+    if (newComplexity !== animationObjects.lastComplexity) {
         console.log("Morph complexity changed, recreating...");
         cleanupMorphAnimation();
         setupMorphAnimation(); // Recreate with new complexity
+    } else {
+        // If complexity value is the same, just update the display
+        updateAllValueDisplays();
     }
-    updateAllValueDisplays();
 }
 
 // Handler for color changes
 function handleMorphColorChange() {
     if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'morph' || !animationObjects.material || !uiElements.morphColorPicker) return;
+    // console.log("Morph color changed:", uiElements.morphColorPicker.value); // Uncomment for debugging
     animationObjects.material.color.set(uiElements.morphColorPicker.value);
 }
 
 function updateMorphAnimation(deltaTime, elapsedTime) {
-    if (!animationObjects.mesh || !animationObjects.geometries || animationObjects.geometries.length === 0) return;
+    if (!animationObjects.mesh || !animationObjects.geometries || animationObjects.geometries.length === 0 || !morphControls.sliderMorphSpeed || !morphControls.sliderRotationSpeed) {
+        // console.warn("Morph update prerequisites not met."); // Uncomment for debugging
+        return;
+    }
 
     const mesh = animationObjects.mesh;
     const geometries = animationObjects.geometries;
+    // Ensure sliders exist before reading value, provide default
     const morphSpeed = Number.parseFloat(morphControls.sliderMorphSpeed?.value || 1.0);
     const rotationSpeed = Number.parseFloat(morphControls.sliderRotationSpeed?.value || 0.5);
 
@@ -149,12 +158,14 @@ function updateMorphAnimation(deltaTime, elapsedTime) {
 
     // Update morph progress
     animationObjects.morphProgress += deltaTime * morphSpeed;
+    // console.log("Morph Progress:", animationObjects.morphProgress); // Uncomment for debugging
 
     // --- Corrected Scale Transition Logic ---
     const progress = animationObjects.morphProgress;
     const transitionDuration = 1.0; // Total time for one morph (scale down + scale up)
 
     if (progress >= transitionDuration) {
+        // console.log("Morph transition complete."); // Uncomment for debugging
         // Transition complete: Finalize target shape and prepare for next
         animationObjects.morphProgress = 0; // Reset progress
         animationObjects.currentShapeIndex = animationObjects.targetShapeIndex;
@@ -163,6 +174,7 @@ function updateMorphAnimation(deltaTime, elapsedTime) {
         // Ensure mesh has the correct final geometry and scale
         const finalGeometry = geometries[animationObjects.currentShapeIndex];
         if (mesh.geometry !== finalGeometry) {
+            // console.log("Switching to final geometry:", animationObjects.currentShapeIndex); // Uncomment for debugging
             // Dispose old geometry before assigning new one IF it's not in the geometries array anymore
             // (Not strictly necessary here as we cycle through the array)
             // if (mesh.geometry && !geometries.includes(mesh.geometry)) {
@@ -184,12 +196,14 @@ function updateMorphAnimation(deltaTime, elapsedTime) {
             // Scaling down the current shape (0.0 to halfDuration -> 1.0 to 0.0 scale)
             scaleFactor = 1.0 - (progress / halfDuration);
             if (mesh.geometry !== geometries[currentGeomIndex]) {
+                // console.log("Switching to current geometry (scale down):", currentGeomIndex); // Uncomment for debugging
                 mesh.geometry = geometries[currentGeomIndex];
             }
         } else {
             // Scaling up the target shape (halfDuration to transitionDuration -> 0.0 to 1.0 scale)
             scaleFactor = (progress - halfDuration) / halfDuration;
             if (mesh.geometry !== geometries[targetGeomIndex]) {
+                 // console.log("Switching to target geometry (scale up):", targetGeomIndex); // Uncomment for debugging
                 mesh.geometry = geometries[targetGeomIndex];
             }
         }
@@ -198,6 +212,7 @@ function updateMorphAnimation(deltaTime, elapsedTime) {
         const smoothScale = scaleFactor * scaleFactor * (3.0 - 2.0 * scaleFactor);
         mesh.scale.setScalar(Math.max(0.001, smoothScale)); // Apply scale, avoid zero scale
         mesh.visible = mesh.scale.x > 0.001; // Hide if scale is effectively zero
+        // console.log(`Morph Scale: ${mesh.scale.x.toFixed(3)}, Visible: ${mesh.visible}`); // Uncomment for debugging
     }
 }
 

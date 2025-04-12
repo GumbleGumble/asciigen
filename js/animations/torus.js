@@ -143,12 +143,25 @@ function handleTorusMaterialChange() {
 
 // Handles changes to color property
 function handleTorusColorChange() {
-	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "torus" || !animationObjects.material || !uiElements.torusColorPicker) return;
-	animationObjects.material.color.set(uiElements.torusColorPicker.value);
+	// Check if torus is the current animation and objects/UI exist
+	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "torus" || !animationObjects.material || !uiElements.torusColorPicker) {
+        // console.warn("handleTorusColorChange prerequisites not met."); // Uncomment for debugging
+        return;
+    }
+    try {
+        const newColor = uiElements.torusColorPicker.value;
+        // console.log("Torus color changed:", newColor); // Uncomment for debugging
+	    animationObjects.material.color.set(newColor);
+    } catch (error) {
+        console.error("Error setting torus color:", error);
+    }
 }
 
 function updateTorusAnimation(deltaTime, elapsedTime) {
-	if (!animationObjects.torus) return;
+	if (!animationObjects.torus || !torusControls.sliderSpeed || !uiElements.torusRotationAxis) {
+        // console.warn("Torus update prerequisites not met."); // Uncomment for debugging
+        return;
+    }
 
 	// Get rotation speed and axis from controls
 	const rotationSpeed = Number.parseFloat(torusControls.sliderSpeed.value);
@@ -156,6 +169,8 @@ function updateTorusAnimation(deltaTime, elapsedTime) {
 
 	// Apply rotation based on selected axis
 	const rotationAmount = deltaTime * rotationSpeed;
+    // console.log(`Torus Update - dt: ${deltaTime.toFixed(4)}, speed: ${rotationSpeed}, axis: ${rotationAxis}, amount: ${rotationAmount.toFixed(4)}`); // Uncomment for debugging
+
 	switch (rotationAxis) {
 		case "x":
 			animationObjects.torus.rotation.x += rotationAmount;
@@ -166,13 +181,22 @@ function updateTorusAnimation(deltaTime, elapsedTime) {
 		case "z":
 			animationObjects.torus.rotation.z += rotationAmount;
 			break;
-		case "xy":
+		case "xy": // Example: Combined axis
 			animationObjects.torus.rotation.x += rotationAmount * Math.SQRT1_2; // Use Math.SQRT1_2 for 1/sqrt(2)
 			animationObjects.torus.rotation.y += rotationAmount * Math.SQRT1_2; // Use Math.SQRT1_2 for 1/sqrt(2)
 			break;
+        case "xyz": // Tumble
+            animationObjects.torus.rotation.x += rotationAmount * 0.6; // Adjust multipliers for desired tumble
+            animationObjects.torus.rotation.y += rotationAmount * 0.7;
+            animationObjects.torus.rotation.z += rotationAmount * 0.8;
+            break;
 		default: // Default to Y
 			animationObjects.torus.rotation.y += rotationAmount;
 	}
+    // Normalize rotations periodically to prevent potential floating point issues if needed
+    // animationObjects.torus.rotation.x %= Math.PI * 2;
+    // animationObjects.torus.rotation.y %= Math.PI * 2;
+    // animationObjects.torus.rotation.z %= Math.PI * 2;
 }
 
 function randomizeTorusParameters() {

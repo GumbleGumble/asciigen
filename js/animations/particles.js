@@ -157,7 +157,7 @@ function setupParticleAnimation() {
 	// Create particle material - Use ShaderMaterial for size/alpha control
 	const particleVertexShader = `
         attribute float size;
-        attribute vec3 color; // Use 'color' instead of 'customColor' if using PointsMaterial vertexColors
+        // attribute vec3 color; // <<< REMOVE THIS LINE - It conflicts with the standard 'color' attribute added by Three.js
         varying vec3 vColor;
         varying float vAlpha; // Varying for alpha based on lifespan
 

@@ -260,18 +260,19 @@ const metaballsControls = {
 
 const lissajousControls = {
 	sliderA: uiElements.lissajousA,
-	valueA: uiElements.lissajousAValue,
+	valueA: uiElements.lissajousAValue, // Keep reference for updateAllValueDisplays
 	sliderB: uiElements.lissajousB,
-	valueB: uiElements.lissajousBValue,
+	valueB: uiElements.lissajousBValue, // Keep reference
 	sliderDelta: uiElements.lissajousDelta,
-	valueDelta: uiElements.lissajousDeltaValue,
+	valueDelta: uiElements.lissajousDeltaValue, // Keep reference
 	sliderAmpA: uiElements.lissajousAmpA,
-	valueAmpA: uiElements.lissajousAmpAValue,
+	valueAmpA: uiElements.lissajousAmpAValue, // Keep reference
 	sliderAmpB: uiElements.lissajousAmpB,
-	valueAmpB: uiElements.lissajousAmpBValue,
+	valueAmpB: uiElements.lissajousAmpBValue, // Keep reference
 	sliderSpeed: uiElements.lissajousSpeed,
+	// valueSpeed: uiElements.lissajousSpeedValue, // Already in uiElements
 	sliderPoints: uiElements.lissajousPoints,
-	valuePoints: uiElements.lissajousPointsValue,
+	valuePoints: uiElements.lissajousPointsValue, // Keep reference
 };
 
 // --- Initialization ---
@@ -589,9 +590,10 @@ function setupEventListeners() {
 	for (const slider of lissajousSliders) {
         if (!slider) continue; // Add check
 		slider.addEventListener("input", () => {
-			// Update labels (handled by module's handleLissajousParamChange)
+				// Call the module handler first
 			window.LISSAJOUS_ANIMATION?.handleParamChange?.();
-            // No need to call updateAllValueDisplays here, module handler updates its own labels
+            // Now update all displays, including Lissajous labels
+            updateAllValueDisplays();
 		});
 	}
 
@@ -767,11 +769,18 @@ function updateAllValueDisplays() {
     if (uiElements.metaballsThresholdValue && uiElements.metaballsThreshold) uiElements.metaballsThresholdValue.textContent = Number.parseFloat(uiElements.metaballsThreshold.value).toFixed(2);
     if (uiElements.metaballsColorValue && uiElements.metaballsColor) uiElements.metaballsColorValue.textContent = Number.parseFloat(uiElements.metaballsColor.value).toFixed(2);
 
-    // Lissajous - Module handles its own labels via handleParamChange
-    // Only call if it's the current animation to avoid errors if module isn't fully loaded/ready
-    if (currentAnimationType === 'lissajous') {
-        window.LISSAJOUS_ANIMATION?.handleParamChange?.(); // Call handler to update its specific labels
+    // Lissajous - Update labels here now
+    if (lissajousControls.valueA && lissajousControls.sliderA) lissajousControls.valueA.textContent = lissajousControls.sliderA.value;
+    if (lissajousControls.valueB && lissajousControls.sliderB) lissajousControls.valueB.textContent = lissajousControls.sliderB.value;
+    if (lissajousControls.valueDelta && lissajousControls.sliderDelta) {
+        const deltaVal = Number.parseFloat(lissajousControls.sliderDelta.value);
+        lissajousControls.valueDelta.textContent = `${(deltaVal / Math.PI).toFixed(2)} PI`;
     }
+    if (lissajousControls.valueAmpA && lissajousControls.sliderAmpA) lissajousControls.valueAmpA.textContent = Number.parseFloat(lissajousControls.sliderAmpA.value).toFixed(1);
+    if (lissajousControls.valueAmpB && lissajousControls.sliderAmpB) lissajousControls.valueAmpB.textContent = Number.parseFloat(lissajousControls.sliderAmpB.value).toFixed(1);
+    if (uiElements.lissajousSpeedValue && uiElements.lissajousSpeed) uiElements.lissajousSpeedValue.textContent = Number.parseFloat(uiElements.lissajousSpeed.value).toFixed(1);
+    if (lissajousControls.valuePoints && lissajousControls.sliderPoints) lissajousControls.valuePoints.textContent = lissajousControls.sliderPoints.value;
+
 	// console.log("UI values updated via updateAllValueDisplays."); // Reduce logging noise
 }
 
@@ -1257,7 +1266,7 @@ const startGifRecording = () => {
         quality: 10, // Lower quality for faster processing (1-30)
         width: downscaleCanvas.width, // Use downscale canvas size
         height: downscaleCanvas.height,
-        workerScript: 'js/libs/gif.worker.js', // Path to worker script
+        workerScript: 'js/libs/gif.worker.js', // Verify this path is correct
         background: '#0d1117', // Match container background
         // dither: true, // Optional: Dithering method
     });

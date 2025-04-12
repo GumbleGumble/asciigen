@@ -52,7 +52,7 @@ function setupLissajousAnimation() {
     // Create a color based on time of day for visual interest
     const now = new Date();
     const hue = (now.getHours() % 12) / 12;
-    const startColor = new THREE.Color().setHSL(hue, 1, 0.5);
+    // const startColor = new THREE.Color().setHSL(hue, 1, 0.5); // Color is per-vertex
 
     // Material now uses vertex colors
     const material = new THREE.LineBasicMaterial({
@@ -101,7 +101,8 @@ function setupLissajousAnimation() {
     // for (const slider of ljSliders) { ... }
 
     // Initial update for labels - Handled by script.js updateAllValueDisplays
-    handleLissajousParamChange(); // Call once to set initial derived values if any
+    // handleLissajousParamChange(); // Call once to set initial derived values if any - No longer needed here
+    updateAllValueDisplays(); // Ensure script.js updates labels after setup
 }
 
 // Cleanup function for Lissajous animation
@@ -148,24 +149,24 @@ function handleLissajousParamChange() {
         return; // Exit if not the active animation or not set up
     }
     // Ensure controls exist before accessing them
-    if (!lissajousControls || !lissajousControls.sliderPoints || !lissajousControls.sliderA || !lissajousControls.sliderB || !lissajousControls.sliderDelta || !lissajousControls.sliderAmpA || !lissajousControls.sliderAmpB || !lissajousControls.sliderSpeed || !lissajousControls.valueA) { // Check one value display too
-        console.warn("Lissajous controls or value displays missing in handleLissajousParamChange.");
+    if (!lissajousControls || !lissajousControls.sliderPoints || !lissajousControls.sliderA || !lissajousControls.sliderB || !lissajousControls.sliderDelta || !lissajousControls.sliderAmpA || !lissajousControls.sliderAmpB || !lissajousControls.sliderSpeed /*|| !lissajousControls.valueA*/) { // Remove check for valueA as it's updated by script.js
+        console.warn("Lissajous controls missing in handleLissajousParamChange.");
         return;
     }
 
 
-    // Update labels directly here as script.js listener calls this
-    lissajousControls.valueA.textContent = lissajousControls.sliderA.value;
-    lissajousControls.valueB.textContent = lissajousControls.sliderB.value;
-    const deltaVal = Number.parseFloat(lissajousControls.sliderDelta.value);
-    lissajousControls.valueDelta.textContent = `${(deltaVal / Math.PI).toFixed(2)} PI`;
-    lissajousControls.valueAmpA.textContent = Number.parseFloat(lissajousControls.sliderAmpA.value).toFixed(1);
-    lissajousControls.valueAmpB.textContent = Number.parseFloat(lissajousControls.sliderAmpB.value).toFixed(1);
-    lissajousControls.valuePoints.textContent = lissajousControls.sliderPoints.value;
-    // Check if speed value element exists
-    if (uiElements.lissajousSpeedValue) {
-        uiElements.lissajousSpeedValue.textContent = Number.parseFloat(lissajousControls.sliderSpeed.value).toFixed(1);
-    }
+    // Update labels directly here as script.js listener calls this - REMOVED
+    // lissajousControls.valueA.textContent = lissajousControls.sliderA.value;
+    // lissajousControls.valueB.textContent = lissajousControls.sliderB.value;
+    // const deltaVal = Number.parseFloat(lissajousControls.sliderDelta.value);
+    // lissajousControls.valueDelta.textContent = `${(deltaVal / Math.PI).toFixed(2)} PI`;
+    // lissajousControls.valueAmpA.textContent = Number.parseFloat(lissajousControls.sliderAmpA.value).toFixed(1);
+    // lissajousControls.valueAmpB.textContent = Number.parseFloat(lissajousControls.sliderAmpB.value).toFixed(1);
+    // lissajousControls.valuePoints.textContent = lissajousControls.sliderPoints.value;
+    // // Check if speed value element exists
+    // if (uiElements.lissajousSpeedValue) {
+    //     uiElements.lissajousSpeedValue.textContent = Number.parseFloat(lissajousControls.sliderSpeed.value).toFixed(1);
+    // }
 
 
     // Recreate geometry ONLY if point count changes
@@ -249,8 +250,9 @@ function randomizeLissajousParameters() {
     // Optional: Start a smooth transition instead of snapping
     // startLissajousTransition(targetParams);
 
-    // Explicitly call handler to ensure labels/state are correct immediately after randomization
-    handleLissajousParamChange();
+    // Explicitly call handler to ensure labels/state are correct immediately after randomization - No longer needed here
+    // handleLissajousParamChange();
+    // script.js's updateAllValueDisplays will handle labels after the events are dispatched.
 }
 
 
@@ -319,9 +321,10 @@ function updateLissajousAnimation(deltaTime, elapsedTime) {
     const speed = Number.isFinite(params.speed) ? params.speed : 1;
 
     // Calculate how many new points to add this frame based on speed and deltaTime
-    const pointsToAdd = Math.max(1, Math.floor(deltaTime * speed * 50)); // Adjust multiplier
+    const pointsToAdd = Math.max(1, Math.floor(deltaTime * speed * 60)); // Increased multiplier for potentially smoother drawing at lower speeds
 
     const tempColor = new THREE.Color(); // Reuse color object
+    const hueShiftSpeed = 0.03; // Slow hue shift over time
 
     for (let k = 0; k < pointsToAdd; k++) {
         // Calculate the parameter 't' for the Lissajous curve based on the current index
@@ -335,11 +338,12 @@ function updateLissajousAnimation(deltaTime, elapsedTime) {
         // Calculate new position
         positions[i3] = ampA * Math.sin(freqA * t + delta);
         positions[i3 + 1] = ampB * Math.sin(freqB * t);
-        positions[i3 + 2] = 0; // Keep it 2D
+        // Add subtle Z oscillation based on curve parameter 't' and elapsedTime
+        positions[i3 + 2] = Math.sin(t * 0.5 + elapsedTime * 0.2) * 0.5;
 
         // Set the color of the new point to full brightness (e.g., based on hue)
-        const hueShift = (elapsedTime * 0.05) % 1.0;
-        tempColor.setHSL((baseHue + hueShift) % 1.0, 1, 0.5);
+        const currentHue = (baseHue + (elapsedTime * hueShiftSpeed)) % 1.0; // Slowly shift base hue
+        tempColor.setHSL(currentHue, 1, 0.5);
         colors[i3] = tempColor.r;
         colors[i3 + 1] = tempColor.g;
         colors[i3 + 2] = tempColor.b;
@@ -354,11 +358,13 @@ function updateLissajousAnimation(deltaTime, elapsedTime) {
         const i3 = i * 3;
         // Check if this point was just added - skip fading if so (optional optimization)
         let justAdded = false;
+        let checkIndex = (currentPointIndex - 1 + pointCount) % pointCount; // Start from the last added point
         for (let k = 0; k < pointsToAdd; k++) {
-            if (i === (currentPointIndex - 1 - k + pointCount) % pointCount) {
+            if (i === checkIndex) {
                 justAdded = true;
                 break;
             }
+            checkIndex = (checkIndex - 1 + pointCount) % pointCount; // Move backwards
         }
         if (justAdded) continue;
 
