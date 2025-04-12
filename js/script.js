@@ -1,31 +1,45 @@
-// import * as THREE from "three"; // Remove this line - THREE is global
+// ASCII Art Generator v2 - Main Script
 
-// --- Global Variables ---
-let scene; // Declare variables separately
+// --- Globals ---
+let scene;
 let camera;
 let renderer;
 let clock;
-let renderTarget;
+let asciiWidth = 120; // Default width
+let calculatedHeight = 30; // Default height, will be calculated
 let downscaleCanvas;
 let downscaleCtx;
-let pixelData;
+let pixelData; // Uint8ClampedArray for pixel data
+let renderTarget;
+let animationObjects = {}; // Global container for current animation elements
 const ASCII_CHARS_MAP = {
-	// Added from main.js for charset switching
 	dense: "@%#*+=-:. ".split("").reverse().join(""),
-	simple: "#=-. ".split("").reverse().join(""),
+	standard: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ".split("").reverse().join(""),
+	minimal: "#=-. ".split("").reverse().join(""),
 	blocks: "█▓▒░ ".split("").reverse().join(""),
-	complex:
-		"$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
-			.split("")
-			.reverse()
-			.join(""),
-	binary: "10".split("").reverse().join(""),
+	binary: "10".split("").reverse().join(""), // Added
+    dots: ".:*#".split("").reverse().join(""), // Added
+	complex: "Ñ@#W$9876543210?!abc;:+=-,._ ".split("").reverse().join(""), // Added
+    shade: "████▓▓▓▒▒▒░░░   ".split("").reverse().join(""), // Added
+    gradient: "█▇▆▅▄▃▂ ".split("").reverse().join(""), // Added
 };
 let asciiChars = ASCII_CHARS_MAP.dense; // Default character set
 let isPaused = false;
 let animationFrameId; // Keep as let, it's reassigned
 let currentAnimationType = "lissajous"; // Default animation
 // const lastTime = 0; // Unused variable
+
+// GIF Recording State
+let isRecordingGif = false;
+let gifEncoder = null;
+let gifRecordStartTime = 0;
+const GIF_RECORD_DURATION = 5000; // 5 seconds in milliseconds
+const GIF_FRAME_DELAY = 100; // Delay between frames in ms (10 FPS)
+let lastGifFrameTime = 0;
+
+// Preset Storage Key
+const PRESET_STORAGE_KEY = "asciiGenPresets_v1";
+
 
 // --- DOM Elements ---
 const uiElements = {
@@ -34,19 +48,27 @@ const uiElements = {
 	resolution: document.getElementById("resolution-slider"),
 	resolutionValue: document.getElementById("resolution-value"),
 	charset: document.getElementById("charset-select"),
-	brightness: document.getElementById("brightness-slider"), // Use ID from main.js version
-	brightnessValue: document.getElementById("brightness-value"), // Added for consistency
-	contrast: document.getElementById("contrast-slider"), // Use ID from main.js version
-	contrastValue: document.getElementById("contrast-value"), // Added for consistency
-	zoom: document.getElementById("zoom-slider"), // Use ID from main.js version
-	zoomValue: document.getElementById("zoom-value"), // Added for consistency
-	invert: document.getElementById("invert-brightness-checkbox"), // Use ID from main.js version
+	brightness: document.getElementById("brightness-slider"),
+	brightnessValue: document.getElementById("brightness-value"),
+	contrast: document.getElementById("contrast-slider"),
+	contrastValue: document.getElementById("contrast-value"),
+	zoom: document.getElementById("zoom-slider"),
+	zoomValue: document.getElementById("zoom-value"),
+	invert: document.getElementById("invert-checkbox"),
 	renderTargetResolution: document.getElementById("renderTargetResolution"),
 	renderTargetResolutionValue: document.getElementById(
 		"renderTargetResolutionValue",
 	),
 	pausePlayButton: document.getElementById("pausePlayButton"),
 	randomizeButton: document.getElementById("randomizeButton"),
+    recordGifButton: document.getElementById("recordGifButton"), // Added GIF Button
+    // --- Preset UI ---
+    presetNameInput: document.getElementById("presetName"),
+    savePresetButton: document.getElementById("savePresetButton"),
+    loadPresetButton: document.getElementById("loadPresetButton"),
+    deletePresetButton: document.getElementById("deletePresetButton"),
+    presetLoadSelect: document.getElementById("presetLoadSelect"),
+    // --- End Preset UI ---
 	animationType: document.getElementById("animationType"), // Corrected ID
 	// Lighting
 	ambientIntensity: document.getElementById("ambient-intensity-slider"),
@@ -66,20 +88,25 @@ const uiElements = {
 	torusSpeedValue: document.getElementById("torus-speed-value"),
 	torusThickness: document.getElementById("torus-thickness-slider"),
 	torusThicknessValue: document.getElementById("torus-thickness-value"),
-	torusMajorRadius: document.getElementById("torusMajorRadius"),
-	torusMajorRadiusValue: document.getElementById("torusMajorRadiusValue"),
-	torusRotationAxis: document.getElementById("torusRotationAxis"),
+	torusMajorRadius: document.getElementById("torus-major-radius-slider"), // Added
+	torusMajorRadiusValue: document.getElementById("torus-major-radius-value"), // Added
 	torusRoughness: document.getElementById("torus-roughness-slider"), // Added
 	torusRoughnessValue: document.getElementById("torus-roughness-value"), // Added
 	torusMetalness: document.getElementById("torus-metalness-slider"), // Added
 	torusMetalnessValue: document.getElementById("torus-metalness-value"), // Added
+	torusRotationAxis: document.getElementById("torus-rotation-axis-select"), // Added
+    torusColorPicker: document.getElementById("torus-color-picker"), // Added
 	// Noise Specific
 	noiseScale: document.getElementById("noise-scale-slider"),
 	noiseScaleValue: document.getElementById("noise-scale-value"),
-	noiseSpeed: document.getElementById("noise-speed-slider"),
-	noiseSpeedValue: document.getElementById("noise-speed-value"),
+    noiseSpeedX: document.getElementById("noise-speed-x-slider"), // Changed
+    noiseSpeedXValue: document.getElementById("noise-speed-x-value"), // Changed
+    noiseSpeedY: document.getElementById("noise-speed-y-slider"), // Added
+    noiseSpeedYValue: document.getElementById("noise-speed-y-value"), // Added
 	noiseBrightness: document.getElementById("noise-brightness-slider"),
 	noiseBrightnessValue: document.getElementById("noise-brightness-value"),
+    noiseOctaves: document.getElementById("noise-octaves-slider"), // Added
+    noiseOctavesValue: document.getElementById("noise-octaves-value"), // Added
 	// Particle Specific
 	particleCount: document.getElementById("particles-count-slider"),
 	particleCountValue: document.getElementById("particles-count-value"),
@@ -112,12 +139,10 @@ const uiElements = {
 	kaleidoscopeNoiseScaleValue: document.getElementById(
 		"kaleidoscope-noise-scale-value",
 	),
-	kaleidoscopeNoiseSpeed: document.getElementById(
-		"kaleidoscope-noise-speed-slider",
-	),
-	kaleidoscopeNoiseSpeedValue: document.getElementById(
-		"kaleidoscope-noise-speed-value",
-	),
+    kaleidoscopeNoiseSpeedX: document.getElementById("kaleidoscope-noise-speed-x-slider"), // Changed
+    kaleidoscopeNoiseSpeedXValue: document.getElementById("kaleidoscope-noise-speed-x-value"), // Changed
+    kaleidoscopeNoiseSpeedY: document.getElementById("kaleidoscope-noise-speed-y-slider"), // Added
+    kaleidoscopeNoiseSpeedYValue: document.getElementById("kaleidoscope-noise-speed-y-value"), // Added
 	kaleidoscopeNoiseBrightness: document.getElementById(
 		"kaleidoscope-noise-brightness-slider",
 	),
@@ -129,10 +154,11 @@ const uiElements = {
 	morphSpeedValue: document.getElementById("morph-speed-value"),
 	morphRotationSpeed: document.getElementById("morph-rotation-slider"),
 	morphRotationSpeedValue: document.getElementById(
-		"morph-rotation-speed-value",
+		"morph-rotation-speed-value", // Corrected ID
 	),
 	morphComplexity: document.getElementById("morph-complexity-slider"), // Added
 	morphComplexityValue: document.getElementById("morph-complexity-value"), // Added
+    morphColorPicker: document.getElementById("morph-color-picker"), // Added
 	// Metaballs Specific
 	metaballsCount: document.getElementById("metaballs-count-slider"),
 	metaballsCountValue: document.getElementById("mb-count-value"),
@@ -161,9 +187,6 @@ const uiElements = {
 	lissajousPointsValue: document.getElementById("lj-points-value"),
 };
 
-// --- Animation Objects (Global container for current animation elements) ---
-let animationObjects = {};
-
 // --- Control Containers (Map for easy access in updateUIForAnimationType) ---
 const controlContainers = {
 	torus: document.getElementById("torus-controls"),
@@ -190,8 +213,10 @@ const torusControls = {
 
 const noiseControls = {
 	sliderScale: uiElements.noiseScale,
-	sliderSpeed: uiElements.noiseSpeed,
+    sliderSpeedX: uiElements.noiseSpeedX, // Changed
+    sliderSpeedY: uiElements.noiseSpeedY, // Added
 	sliderBrightness: uiElements.noiseBrightness,
+    // Octaves slider accessed via uiElements.noiseOctaves
 };
 
 const particlesControls = {
@@ -210,7 +235,8 @@ const kaleidoscopeControls = {
 	sliderSegments: uiElements.kaleidoscopeSegments,
 	valueSegments: uiElements.kaleidoscopeSegmentsValue,
 	sliderNoiseScale: uiElements.kaleidoscopeNoiseScale,
-	sliderNoiseSpeed: uiElements.kaleidoscopeNoiseSpeed,
+    sliderNoiseSpeedX: uiElements.kaleidoscopeNoiseSpeedX, // Changed
+    sliderNoiseSpeedY: uiElements.kaleidoscopeNoiseSpeedY, // Added
 	sliderNoiseBrightness: uiElements.kaleidoscopeNoiseBrightness,
 };
 
@@ -218,6 +244,7 @@ const morphControls = {
 	sliderMorphSpeed: uiElements.morphSpeed,
 	sliderRotationSpeed: uiElements.morphRotationSpeed,
 	sliderComplexity: uiElements.morphComplexity, // Added
+    // Color picker accessed via uiElements.morphColorPicker
 };
 
 const metaballsControls = {
@@ -277,18 +304,22 @@ function init() {
 	// Don't add renderer.domElement to the document body
 
 	// Initial Render Target and Downscale Canvas Setup
-	setupRenderTargetAndCanvas(); // Depends on renderer being initialized
+	// Defer initial setup slightly to ensure container dimensions are available
+	requestAnimationFrame(setupRenderTargetAndCanvas);
 
 	// Event Listeners
 	setupEventListeners();
     console.log("Event listeners set up.");
+
+    // Load presets into dropdown
+    updatePresetList();
 
 	// Initial UI Update
 	updateAllValueDisplays();
 	// Set initial charset based on dropdown
 	asciiChars =
 		ASCII_CHARS_MAP[uiElements.charset.value] || ASCII_CHARS_MAP.dense;
-	updateUIForAnimationType(currentAnimationType);
+	updateUIForAnimationType(currentAnimationType); // Ensure correct controls are shown initially
     console.log("Initial UI updated.");
 
 	// Start
@@ -304,30 +335,41 @@ function setupEventListeners() {
 	uiElements.resolution.addEventListener("input", () => {
 		// uiElements.resolutionValue.textContent = uiElements.resolution.value; // Handled by updateAllValueDisplays
 		setupRenderTargetAndCanvas(); // ASCII grid size depends on this
+		updateAllValueDisplays(); // Update label immediately
 	});
 	uiElements.charset.addEventListener("change", (e) => {
 		asciiChars = ASCII_CHARS_MAP[e.target.value] || ASCII_CHARS_MAP.dense;
 	});
 	uiElements.brightness.addEventListener("input", (e) => {
 		// uiElements.brightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
+		updateAllValueDisplays(); // Update label immediately
 	});
 	uiElements.contrast.addEventListener("input", (e) => {
 		// uiElements.contrastValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
+		updateAllValueDisplays(); // Update label immediately
 	});
 	uiElements.zoom.addEventListener("input", (e) => {
 		const zoomVal = Number.parseFloat(e.target.value);
 		// uiElements.zoomValue.textContent = zoomVal.toFixed(1); // Handled by updateAllValueDisplays
 		if (camera) camera.position.z = zoomVal;
+		updateAllValueDisplays(); // Update label immediately
 	});
 	uiElements.renderTargetResolution.addEventListener("input", (e) => {
 		// uiElements.renderTargetResolutionValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		setupRenderTargetAndCanvas(); // Render target size depends on this
+		updateAllValueDisplays(); // Update label immediately
 	});
 	// Invert checkbox has no value display, just checked state
 
 	// Buttons
 	uiElements.pausePlayButton.addEventListener("click", togglePause);
 	uiElements.randomizeButton.addEventListener("click", randomizeParameters);
+    uiElements.recordGifButton.addEventListener("click", toggleGifRecording); // Added
+
+    // Preset Buttons
+    uiElements.savePresetButton.addEventListener("click", savePreset);
+    uiElements.loadPresetButton.addEventListener("click", loadPreset);
+    uiElements.deletePresetButton.addEventListener("click", deletePreset);
 
 	// Animation Type Selector
 	uiElements.animationType.addEventListener("change", (e) =>
@@ -336,17 +378,15 @@ function setupEventListeners() {
 
 	// Lighting Controls
 	uiElements.ambientIntensity.addEventListener("input", (e) => {
-		const intensity = Number.parseFloat(e.target.value);
-		// uiElements.ambientIntensityValue.textContent = intensity.toFixed(2); // Handled by updateAllValueDisplays
+		updateAllValueDisplays();
 		if (animationObjects.ambientLight) {
-			animationObjects.ambientLight.intensity = intensity;
+			animationObjects.ambientLight.intensity = Number.parseFloat(e.target.value);
 		}
 	});
 	uiElements.directionalIntensity.addEventListener("input", (e) => {
-		const intensity = Number.parseFloat(e.target.value);
-		// uiElements.directionalIntensityValue.textContent = intensity.toFixed(1); // Handled by updateAllValueDisplays
+		updateAllValueDisplays();
 		if (animationObjects.directionalLight) {
-			animationObjects.directionalLight.intensity = intensity;
+			animationObjects.directionalLight.intensity = Number.parseFloat(e.target.value);
 		}
 	});
 	const lightPosSliders = [
@@ -356,23 +396,22 @@ function setupEventListeners() {
 	];
 	// Use for...of loop
 	for (const slider of lightPosSliders) {
-        if (!slider) continue; // Add check
-		slider.addEventListener("input", () => {
-			const x = Number.parseFloat(uiElements.lightPosX.value);
-			const y = Number.parseFloat(uiElements.lightPosY.value);
-			const z = Number.parseFloat(uiElements.lightPosZ.value);
-			// uiElements.lightPosXValue.textContent = x.toFixed(1); // Handled by updateAllValueDisplays
-			// uiElements.lightPosYValue.textContent = y.toFixed(1); // Handled by updateAllValueDisplays
-			// uiElements.lightPosZValue.textContent = z.toFixed(1); // Handled by updateAllValueDisplays
-			if (animationObjects.directionalLight) {
-				animationObjects.directionalLight.position.set(x, y, z);
-			}
-		});
+		if (slider) {
+			slider.addEventListener("input", (e) => {
+				updateAllValueDisplays();
+				if (animationObjects.directionalLight) {
+					const x = Number.parseFloat(uiElements.lightPosX.value);
+					const y = Number.parseFloat(uiElements.lightPosY.value);
+					const z = Number.parseFloat(uiElements.lightPosZ.value);
+					animationObjects.directionalLight.position.set(x, y, z);
+				}
+			});
+		}
 	}
 
 	// --- Add listeners for Animation Specific Controls ---
 	// These listeners call the module handlers. UI updates are triggered
-    // by updateAllValueDisplays called from the listener itself or the handler.
+	// by updateAllValueDisplays called from the listener itself or the handler.
 
 	// Torus
     if (uiElements.torusSpeed) uiElements.torusSpeed.addEventListener("input", (e) => {
@@ -404,6 +443,10 @@ function setupEventListeners() {
 		window.TORUS_ANIMATION?.handleRotationAxisChange?.();
         // No label to update directly for select
 	});
+    if (uiElements.torusColorPicker) uiElements.torusColorPicker.addEventListener("input", () => { // Changed to input for live update
+        window.TORUS_ANIMATION?.handleColorChange?.();
+        // No label to update
+    });
 
 	// Noise
 	if (uiElements.noiseScale) uiElements.noiseScale.addEventListener("input", (e) => {
@@ -411,16 +454,17 @@ function setupEventListeners() {
 		window.NOISE_ANIMATION?.handleParamChange?.();
         updateAllValueDisplays(); // Update label
 	});
-	if (uiElements.noiseSpeed) uiElements.noiseSpeed.addEventListener("input", (e) => {
-		// uiElements.noiseSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
-		window.NOISE_ANIMATION?.handleParamChange?.(); // Update uniform via handler
-        updateAllValueDisplays(); // Update label
-	});
+    if (uiElements.noiseSpeedX) uiElements.noiseSpeedX.addEventListener("input", (e) => { window.NOISE_ANIMATION?.handleParamChange?.(); updateAllValueDisplays(); }); // Changed
+    if (uiElements.noiseSpeedY) uiElements.noiseSpeedY.addEventListener("input", (e) => { window.NOISE_ANIMATION?.handleParamChange?.(); updateAllValueDisplays(); }); // Added
 	if (uiElements.noiseBrightness) uiElements.noiseBrightness.addEventListener("input", (e) => {
 		// uiElements.noiseBrightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.NOISE_ANIMATION?.handleParamChange?.();
         updateAllValueDisplays(); // Update label
 	});
+    if (uiElements.noiseOctaves) uiElements.noiseOctaves.addEventListener("input", (e) => { // Added
+        window.NOISE_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
+    });
 
 	// Particles
 	if (uiElements.particleCount) uiElements.particleCount.addEventListener("input", (e) => {
@@ -473,11 +517,8 @@ function setupEventListeners() {
 		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
         updateAllValueDisplays(); // Update label
 	});
-	if (uiElements.kaleidoscopeNoiseSpeed) uiElements.kaleidoscopeNoiseSpeed.addEventListener("input", (e) => {
-		// uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
-		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.(); // Update uniform
-        updateAllValueDisplays(); // Update label
-	});
+    if (uiElements.kaleidoscopeNoiseSpeedX) uiElements.kaleidoscopeNoiseSpeedX.addEventListener("input", (e) => { window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.(); updateAllValueDisplays(); }); // Changed
+    if (uiElements.kaleidoscopeNoiseSpeedY) uiElements.kaleidoscopeNoiseSpeedY.addEventListener("input", (e) => { window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.(); updateAllValueDisplays(); }); // Added
 	if (uiElements.kaleidoscopeNoiseBrightness) uiElements.kaleidoscopeNoiseBrightness.addEventListener("input", (e) => {
 		// uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
@@ -502,6 +543,10 @@ function setupEventListeners() {
             updateAllValueDisplays(); // Update label
 	    });
 	}
+    if (uiElements.morphColorPicker) uiElements.morphColorPicker.addEventListener("input", () => { // Changed to input
+        window.MORPH_ANIMATION?.handleColorChange?.();
+        // No label to update
+    });
 
 	// Metaballs
 	if (uiElements.metaballsCount) uiElements.metaballsCount.addEventListener("input", (e) => {
@@ -575,7 +620,7 @@ function setupEventListeners() {
 
 // --- Canvas and Render Target Setup ---
 function setupRenderTargetAndCanvas() {
-    console.log("setupRenderTargetAndCanvas called.");
+    // console.log("setupRenderTargetAndCanvas called."); // Reduce logging
 	const display = uiElements.display;
 	const container = uiElements.displayContainer;
 	if (!container || !display) {
@@ -587,39 +632,48 @@ function setupRenderTargetAndCanvas() {
 	const containerHeight = container.clientHeight;
 
 	if (containerWidth <= 0 || containerHeight <= 0) {
-		console.warn("Container dimensions not available yet, deferring setup."); // Keep this warning
-		requestAnimationFrame(setupRenderTargetAndCanvas); // Try again
+		// console.warn("Container dimensions not available yet, deferring setup."); // Reduce logging
+        // Request again slightly later if dimensions aren't ready
+        requestAnimationFrame(setupRenderTargetAndCanvas);
 		return;
 	}
-    console.log(`Container dimensions: ${containerWidth}x${containerHeight}`); // Log dimensions *after* check
+    // console.log(`Container dimensions: ${containerWidth}x${containerHeight}`); // Reduce logging
 
 	// 1. Determine ASCII Grid Size (based on resolution slider and container aspect ratio)
-	const asciiWidth = Number.parseInt(uiElements.resolution.value, 10); // Use radix 10
+	asciiWidth = Number.parseInt(uiElements.resolution.value, 10); // Update global
 	const charAspectRatio = 0.6; // Estimate: Adjust based on font
-	const calculatedHeight = Math.max(
+	calculatedHeight = Math.max( // Update global
 		1,
 		Math.round(
 			(containerHeight / containerWidth) * asciiWidth * charAspectRatio,
 		),
 	);
-    console.log(`Calculated ASCII grid: ${asciiWidth}x${calculatedHeight}`); // Log grid size
+    // console.log(`ASCII Grid: ${asciiWidth}x${calculatedHeight}`); // Reduce logging
 
-	// 2. Determine Render Target Size (based on ASCII grid and scale factor)
-	const renderScale = Number.parseFloat(
-		uiElements.renderTargetResolution.value,
-	);
-	const renderWidth = Math.max(1, Math.floor(asciiWidth * renderScale));
-	const renderHeight = Math.max(1, Math.floor(calculatedHeight * renderScale));
+	// 2. Adjust Font Size to Fit Container
+	const fontSizeW = containerWidth / asciiWidth;
+	const fontSizeH = containerHeight / calculatedHeight;
+	const fontSize = Math.min(fontSizeW / charAspectRatio, fontSizeH); // Use the smaller dimension to ensure fit
+	display.style.fontSize = `${fontSize}px`;
+    // console.log(`Calculated font size: ${fontSize}px`); // Reduce logging
 
-	// 3. Setup Render Target
+	// 3. Setup WebGL Render Target (matches container aspect ratio, scaled by slider)
+	const renderScale = Number.parseFloat(uiElements.renderTargetResolution.value);
+	// Use a base size and scale it, maintaining aspect ratio
+	// const baseRenderWidth = 512; // Or use containerWidth as base? Let's try containerWidth
+	const renderWidth = Math.max(1, Math.floor(containerWidth * renderScale));
+	const renderHeight = Math.max(1, Math.floor(containerHeight * renderScale));
+
 	if (!renderTarget || renderTarget.width !== renderWidth || renderTarget.height !== renderHeight) {
-		if (renderTarget) renderTarget.dispose(); // Dispose old one if exists
+        if (renderTarget) {
+            renderTarget.dispose(); // Dispose old target
+            // console.log("Disposed old render target."); // Reduce logging
+        }
         try {
             renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
                 minFilter: THREE.LinearFilter,
                 magFilter: THREE.NearestFilter,
                 format: THREE.RGBAFormat,
-                type: THREE.UnsignedByteType, // Use UnsignedByteType for readRenderTargetPixels
             });
             console.log(`Render Target resized/created: ${renderWidth}x${renderHeight}`);
         } catch (error) {
@@ -641,32 +695,18 @@ function setupRenderTargetAndCanvas() {
 		downscaleCanvas.width = asciiWidth;
 		downscaleCanvas.height = calculatedHeight;
 		// Reallocate pixelData buffer if size changed
-		pixelData = new Uint8ClampedArray(asciiWidth * calculatedHeight * 4);
-		console.log(`Downscale Canvas resized to: ${asciiWidth}x${calculatedHeight}`);
+		// pixelData = new Uint8ClampedArray(asciiWidth * calculatedHeight * 4); // Reallocate in renderToAscii if needed
+        console.log(`Downscale canvas resized: ${asciiWidth}x${calculatedHeight}`);
 	}
 
-
-	// 5. Adjust Display Font Size to fit container
-	// Calculate font size based on container width and ascii width
-	const calculatedFontSizeW = containerWidth / asciiWidth;
-	// Calculate font size based on container height and ascii height (considering line height)
-	const lineHeight = 1.0; // Match CSS line-height
-	const calculatedFontSizeH = containerHeight / (calculatedHeight * lineHeight);
-
-	// Use the smaller of the two calculated font sizes to ensure it fits both ways
-	const targetFontSize = Math.min(calculatedFontSizeW, calculatedFontSizeH);
-
-	// Apply the calculated font size (with a minimum size)
-	display.style.fontSize = `${Math.max(1, targetFontSize)}px`; // Ensure font size is at least 1px
-    console.log(`Font size set to: ${display.style.fontSize}`); // Log font size
-
-    // Update camera aspect ratio based on container dimensions
-    if (camera) {
-        camera.aspect = containerWidth / containerHeight;
-        camera.updateProjectionMatrix();
-        console.log("Camera aspect ratio updated.");
-    }
-    console.log("setupRenderTargetAndCanvas finished.");
+	// 5. Update Camera Aspect Ratio (if camera exists)
+	if (camera) {
+        if (camera.aspect !== containerWidth / containerHeight) {
+            camera.aspect = containerWidth / containerHeight;
+            camera.updateProjectionMatrix();
+            // console.log("Camera aspect ratio updated in setupRenderTargetAndCanvas."); // Reduce logging
+        }
+	}
 }
 
 // --- UI Update Functions ---
@@ -695,8 +735,10 @@ function updateAllValueDisplays() {
 
     // Noise
     if (uiElements.noiseScaleValue && uiElements.noiseScale) uiElements.noiseScaleValue.textContent = Number.parseFloat(uiElements.noiseScale.value).toFixed(1);
-    if (uiElements.noiseSpeedValue && uiElements.noiseSpeed) uiElements.noiseSpeedValue.textContent = Number.parseFloat(uiElements.noiseSpeed.value).toFixed(1);
+    if (uiElements.noiseSpeedXValue && uiElements.noiseSpeedX) uiElements.noiseSpeedXValue.textContent = Number.parseFloat(uiElements.noiseSpeedX.value).toFixed(1); // Changed
+    if (uiElements.noiseSpeedYValue && uiElements.noiseSpeedY) uiElements.noiseSpeedYValue.textContent = Number.parseFloat(uiElements.noiseSpeedY.value).toFixed(1); // Added
     if (uiElements.noiseBrightnessValue && uiElements.noiseBrightness) uiElements.noiseBrightnessValue.textContent = Number.parseFloat(uiElements.noiseBrightness.value).toFixed(1);
+    if (uiElements.noiseOctavesValue && uiElements.noiseOctaves) uiElements.noiseOctavesValue.textContent = uiElements.noiseOctaves.value; // Added
 
     // Particles
     if (uiElements.particleCountValue && uiElements.particleCount) uiElements.particleCountValue.textContent = uiElements.particleCount.value;
@@ -709,7 +751,8 @@ function updateAllValueDisplays() {
     // Kaleidoscope
     if (uiElements.kaleidoscopeSegmentsValue && uiElements.kaleidoscopeSegments) uiElements.kaleidoscopeSegmentsValue.textContent = uiElements.kaleidoscopeSegments.value;
     if (uiElements.kaleidoscopeNoiseScaleValue && uiElements.kaleidoscopeNoiseScale) uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseScale.value).toFixed(1);
-    if (uiElements.kaleidoscopeNoiseSpeedValue && uiElements.kaleidoscopeNoiseSpeed) uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseSpeed.value).toFixed(1);
+    if (uiElements.kaleidoscopeNoiseSpeedXValue && uiElements.kaleidoscopeNoiseSpeedX) uiElements.kaleidoscopeNoiseSpeedXValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseSpeedX.value).toFixed(1); // Changed
+    if (uiElements.kaleidoscopeNoiseSpeedYValue && uiElements.kaleidoscopeNoiseSpeedY) uiElements.kaleidoscopeNoiseSpeedYValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseSpeedY.value).toFixed(1); // Added
     if (uiElements.kaleidoscopeNoiseBrightnessValue && uiElements.kaleidoscopeNoiseBrightness) uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseBrightness.value).toFixed(1);
 
     // Morph
@@ -725,37 +768,52 @@ function updateAllValueDisplays() {
     if (uiElements.metaballsColorValue && uiElements.metaballsColor) uiElements.metaballsColorValue.textContent = Number.parseFloat(uiElements.metaballsColor.value).toFixed(2);
 
     // Lissajous - Module handles its own labels via handleParamChange
-    window.LISSAJOUS_ANIMATION?.handleParamChange?.(); // Call handler to update its specific labels
-
+    // Only call if it's the current animation to avoid errors if module isn't fully loaded/ready
+    if (currentAnimationType === 'lissajous') {
+        window.LISSAJOUS_ANIMATION?.handleParamChange?.(); // Call handler to update its specific labels
+    }
 	// console.log("UI values updated via updateAllValueDisplays."); // Reduce logging noise
 }
 
 // --- UI Update Functions ---
 function updateUIForAnimationType(type) {
+    console.log(`Updating UI for animation type: ${type}`); // Add logging
 	// Hide all animation-specific control sections
 	// Use for...of loop
-	for (const container of Object.values(controlContainers)) {
-		if (container) container.classList.remove("active");
+	for (const key in controlContainers) {
+        const container = controlContainers[key];
+		if (container) { // Check if container exists
+            // Always remove active class first
+            container.classList.remove("active");
+            // console.log(` Deactivated controls for: ${key}`); // Reduce logging
+        } else {
+            console.warn(` Control container for key "${key}" not found during hide phase.`);
+        }
 	}
 
 	// Show the controls for the selected animation type
 	const activeContainer = controlContainers[type];
 	if (activeContainer) {
 		activeContainer.classList.add("active");
-		console.log(`Activated controls for: ${type}`);
+		console.log(` Activated controls for: ${type}`);
 	} else {
-		console.warn(`Control container for animation type "${type}" not found.`);
+		console.warn(` Control container for animation type "${type}" not found.`);
 	}
 
 	// Conditionally show/hide lighting controls
 	const usesLighting = !["noise", "kaleidoscope", "metaballs"].includes(type);
 	if (controlContainers.lighting) {
 		if (usesLighting) {
+            console.log(" Showing lighting controls.");
 			controlContainers.lighting.classList.add("active");
 		} else {
-			controlContainers.lighting.classList.remove("active");
+            console.log(" Hiding lighting controls.");
+			// Ensure it's hidden if not used (it might have been left active)
+            controlContainers.lighting.classList.remove("active");
 		}
-	}
+	} else {
+        console.warn(" Lighting control container not found.");
+    }
 }
 
 // --- Animation Switching ---
@@ -769,48 +827,58 @@ function switchAnimation(type) {
 	}
 
 	// --- Cleanup previous animation ---
-	// Try calling the cleanup function from the previous animation's module
+	let cleanedUp = false; // Flag to track if module cleanup ran
 	const prevAnimationModule = window[`${prevAnimationType.toUpperCase()}_ANIMATION`]; // Use bracket notation
 	if (prevAnimationModule?.cleanup) { // Use optional chaining
 		try {
 			prevAnimationModule.cleanup(scene); // Pass scene if needed
 			console.log(`Cleaned up ${prevAnimationType} module.`);
+			cleanedUp = true;
 		} catch (error) {
 			console.error(
 				`Error during ${prevAnimationType} module cleanup: ${error}`, // Use template literal
 			);
+			// Continue with default cleanup even if module cleanup failed
 		}
-	} else {
-		// Default cleanup if module or cleanup function doesn't exist
-		console.log("Performing default scene cleanup.");
-		if (scene) {
-			// Check if scene exists
-			// Use for...of loop for scene children removal
-			const childrenToRemove = [...scene.children]; // Create a copy to iterate over
-			for (const obj of childrenToRemove) {
-				// Don't remove lights managed globally here
-				if (obj !== animationObjects.ambientLight && obj !== animationObjects.directionalLight) {
-					scene.remove(obj);
-					if (obj.geometry) obj.geometry.dispose();
-					if (obj.material) {
-						if (Array.isArray(obj.material)) {
-							for (const m of obj.material) {
-								m.dispose();
-							}
-						} else {
-							obj.material.dispose();
-						}
-					}
-					// Dispose textures? Might be needed depending on animation
+	}
+
+	// Default cleanup if module or cleanup function doesn't exist OR if it failed
+	if (!cleanedUp) {
+		console.log(`Performing default cleanup for ${prevAnimationType}.`);
+		const objectsToRemove = [];
+		for (const child of scene.children) { // Use for...of
+			// Keep camera and potentially lights (re-added later)
+			if (
+				!(child instanceof THREE.Camera) &&
+				!(child instanceof THREE.AmbientLight) && // Keep ambient? Re-added anyway.
+				!(child instanceof THREE.DirectionalLight) // Keep directional? Re-added anyway.
+			) {
+				objectsToRemove.push(child);
+			}
+		}
+		for (const child of objectsToRemove) { // Use for...of
+			scene.remove(child);
+			// Attempt to dispose geometry/material if they exist
+			if (child.geometry?.dispose) child.geometry.dispose();
+			if (child.material?.dispose) {
+				if (Array.isArray(child.material)) {
+					for (const m of child.material) { // Use for...of
+                        m.dispose();
+                    }
+				} else {
+					child.material.dispose();
 				}
 			}
 		}
+		// Reset animation objects container (only if default cleanup runs?)
+		// It might be safer to always reset it, or let modules manage their own parts.
+		// Let's reset it here for now as a safety measure.
+		animationObjects = {};
 	}
-	animationObjects = {}; // Reset animation objects container
+
 
 	// --- Setup new animation ---
 	if (!scene) {
-		// Ensure scene exists before adding lights/objects
 		console.error("Scene not initialized before setting up animation.");
 		return;
 	}
@@ -825,17 +893,33 @@ function switchAnimation(type) {
 	const lightZ = Number.parseFloat(uiElements.lightPosZ.value);
 
 	// Remove existing lights before adding/updating to avoid duplicates if module doesn't handle them
-	if (animationObjects.ambientLight) scene.remove(animationObjects.ambientLight);
-	if (animationObjects.directionalLight) scene.remove(animationObjects.directionalLight);
+	// Check if they exist in animationObjects before removing
+	if (animationObjects.ambientLight) {
+		scene.remove(animationObjects.ambientLight);
+		// No dispose method for lights
+		// animationObjects.ambientLight = null; // Clear reference after removing
+	}
+	if (animationObjects.directionalLight) {
+		scene.remove(animationObjects.directionalLight);
+		// No dispose method for lights
+		// animationObjects.directionalLight = null; // Clear reference after removing
+	}
+    // Clear references from animationObjects regardless of whether they were in the scene
+    // This prevents issues if they were removed by a module's cleanup but still referenced.
+    animationObjects.ambientLight = null;
+    animationObjects.directionalLight = null;
+
 
 	// Create or update lights and store references
 	const ambientLight = new THREE.AmbientLight(0xffffff, ambientIntensity);
+	ambientLight.name = "ambientLight"; // Add name for debugging
 	scene.add(ambientLight);
 	const directionalLight = new THREE.DirectionalLight(
 		0xffffff,
 		directionalIntensity,
 	);
 	directionalLight.position.set(lightX, lightY, lightZ);
+	directionalLight.name = "directionalLight"; // Add name for debugging
 	scene.add(directionalLight);
 	// Store lights in animationObjects so they can be potentially removed by cleanup AND updated by sliders
 	animationObjects.ambientLight = ambientLight;
@@ -857,182 +941,142 @@ function switchAnimation(type) {
 
 	// Adjust camera zoom based on animation type (similar to main.js logic)
 	let newZoom = Number.parseFloat(uiElements.zoom.value) || 15; // Default to slider value
-	if (type === "noise" || type === "kaleidoscope") {
+	if (type === "noise" || type === "kaleidoscope" || type === "metaballs") { // Added metaballs
 		newZoom = 5;
 	} else if (type === "morph" || type === "torus" || type === "lissajous") {
 		newZoom = 10;
-	} else if (type === "metaballs" || type === "particles") { // Grouped similar zoom levels
+	} else if (type === "particles") { // Grouped similar zoom levels
 		newZoom = 15;
 	}
 	if (camera) {
 		camera.position.z = newZoom;
 		camera.rotation.set(0, 0, 0); // Reset rotation
 		uiElements.zoom.value = newZoom.toString(); // Sync slider
-		uiElements.zoomValue.textContent = newZoom.toFixed(1); // Sync label
+		// uiElements.zoomValue.textContent = newZoom.toFixed(1); // Sync label - Handled by updateAllValueDisplays
 		camera.updateProjectionMatrix(); // Ensure matrix is updated after position change
 	}
 
 	// Update the UI to show the correct controls
 	updateUIForAnimationType(type);
+    updateAllValueDisplays(); // Ensure all labels are correct after switching
 }
-
-// --- Specific Animation Setup/Update Functions ---
-// Remove placeholder functions like setupTorusAnimation, updateTorusAnimation, etc.
-// The logic is now expected to be in the separate module files (torus.js, noise.js, etc.)
-// and called via switchAnimation and the main animate loop.
 
 // --- Core Rendering Logic ---
 
 function renderToAscii() {
-    // console.log("renderToAscii called"); // Add log here
-	if (
-		!renderer ||
-		!scene ||
-		!camera ||
-		!renderTarget ||
-		!downscaleCtx ||
-		!uiElements.display
-	) {
-		console.warn("Render components not ready for ASCII conversion."); // Keep this warning
-		return;
-	}
-
-	// 1. Render Three.js scene to offscreen render target
-    try {
-        renderer.setRenderTarget(renderTarget);
-        renderer.clear(); // Ensure clean state
-        renderer.render(scene, camera);
-        renderer.setRenderTarget(null); // Render back to canvas (optional, good practice)
-    } catch (error) {
-        console.error("Error during scene rendering:", error);
-        return; // Stop if rendering fails
+	if (!renderer || !scene || !camera || !renderTarget || !downscaleCtx || !uiElements.display) {
+        // console.warn("RenderToAscii prerequisites not met."); // Can be noisy
+        return; // Exit if any required element is missing
     }
 
-	// 2. Read pixels from render target
-	const rtWidth = renderTarget.width;
-	const rtHeight = renderTarget.height;
-	// Ensure buffer size matches render target dimensions
-	const buffer = new Uint8Array(rtWidth * rtHeight * 4);
+	// 1. Render Three.js scene to the render target
+	renderer.setRenderTarget(renderTarget);
+	renderer.render(scene, camera);
+	renderer.setRenderTarget(null); // Reset render target
+
+	// 2. Read pixels from the render target
 	try {
+        // Ensure pixelData buffer is correctly sized before reading
+        const expectedSize = renderTarget.width * renderTarget.height * 4;
+        // Use Uint8Array for readRenderTargetPixels
+        if (!pixelData || pixelData.length !== expectedSize) {
+            // console.warn(`Reallocating pixelData buffer. Expected: ${expectedSize}, Got: ${pixelData?.length}`); // Reduce logging
+            pixelData = new Uint8Array(expectedSize);
+        }
+
 		renderer.readRenderTargetPixels(
 			renderTarget,
 			0,
 			0,
-			rtWidth,
-			rtHeight,
-			buffer,
+			renderTarget.width,
+			renderTarget.height,
+			pixelData, // Read directly into existing buffer
 		);
-	} catch (e) {
-		console.error("Error reading render target pixels:", e);
-		// Attempt to resize buffer if size mismatch is the issue
-		if (e.message.includes("buffer is not large enough")) {
-			console.warn("Attempting to resize pixel buffer.");
-			// This buffer is created locally, so resizing isn't the fix.
-			// The issue might be renderTarget size changing unexpectedly.
-			// Re-check setupRenderTargetAndCanvas logic.
-		}
-		return; // Stop if reading fails
+
+	} catch (error) {
+		console.error("Error reading render target pixels:", error);
+		return; // Stop if reading pixels fails
 	}
 
-	// 3. Draw to smaller 2D canvas for downscaling
-	// Create a temporary canvas to hold the full render target image data
-	// Optimization: Reuse a single temporary canvas if possible
-	const tempCanvas = document.createElement("canvas"); // Consider reusing
-	tempCanvas.width = rtWidth;
-	tempCanvas.height = rtHeight;
-	const tempCtx = tempCanvas.getContext("2d");
-    let imageData;
-    try {
-        imageData = new ImageData(
-            new Uint8ClampedArray(buffer.buffer), // Use buffer.buffer for underlying ArrayBuffer
-            rtWidth,
-            rtHeight,
-        );
-        tempCtx.putImageData(imageData, 0, 0);
-    } catch(error) {
-        console.error("Error creating/putting ImageData:", error);
-        return; // Stop if ImageData fails
-    }
+    // 3. Draw pixels to downscale canvas (draws the high-res RT onto the low-res canvas)
+    // Create a temporary canvas to hold the full render target image data
+    // Optimization: Reuse temp canvas if possible? For now, create each frame.
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = renderTarget.width;
+    tempCanvas.height = renderTarget.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    // Ensure pixelData is Uint8ClampedArray for ImageData
+    const clampedPixelData = new Uint8ClampedArray(pixelData.buffer, pixelData.byteOffset, pixelData.length);
+    const imageData = new ImageData(clampedPixelData, renderTarget.width, renderTarget.height);
+    tempCtx.putImageData(imageData, 0, 0);
+
+    // Draw the temporary canvas onto the downscale canvas, effectively downscaling
+    downscaleCtx.clearRect(0, 0, downscaleCanvas.width, downscaleCanvas.height); // Clear previous frame
+    downscaleCtx.imageSmoothingEnabled = true; // Enable smoothing for better downscaling
+    downscaleCtx.imageSmoothingQuality = 'high'; // Use high quality if available
+    downscaleCtx.drawImage(tempCanvas, 0, 0, downscaleCanvas.width, downscaleCanvas.height);
 
 
-	// Draw from temp canvas to downscale canvas (performs scaling)
-	downscaleCtx.clearRect(0, 0, downscaleCanvas.width, downscaleCanvas.height);
-	downscaleCtx.drawImage(
-		tempCanvas,
-		0,
-		0,
-		rtWidth,
-		rtHeight,
-		0,
-		0,
-		downscaleCanvas.width,
-		downscaleCanvas.height,
-	);
+	// 4. Get image data from the downscale canvas
+	let downscaleImageData;
+	try {
+		downscaleImageData = downscaleCtx.getImageData(
+			0,
+			0,
+			downscaleCanvas.width,
+			downscaleCanvas.height,
+		);
+	} catch (error) {
+		console.error("Error getting image data from downscale canvas:", error);
+		return; // Stop if getting image data fails
+	}
+	const data = downscaleImageData.data;
 
-	// 4. Get pixel data from small canvas
-    try {
-        const smallImageData = downscaleCtx.getImageData(
-            0,
-            0,
-            downscaleCanvas.width,
-            downscaleCanvas.height,
-        );
-        pixelData = smallImageData.data; // Update pixelData reference
-    } catch(error) {
-        console.error("Error getting downscaled ImageData:", error);
-        return; // Stop if getting data fails
-    }
-
-
-	// 5. Convert to ASCII
-	const asciiWidth = downscaleCanvas.width;
-	const asciiHeight = downscaleCanvas.height;
-	let asciiString = "";
-	const brightnessOffset = Number.parseFloat(uiElements.brightness.value) - 0.5; // Center offset around 0
+	// 5. Convert pixels to ASCII characters
+	const brightnessFactor = Number.parseFloat(uiElements.brightness.value);
 	const contrastFactor = Number.parseFloat(uiElements.contrast.value);
 	const invert = uiElements.invert.checked;
-	const numChars = asciiChars.length; // Use length directly
-	// const charLengthFactor = 1 / numChars; // Unused factor
+	const numChars = asciiChars.length;
+	let asciiString = "";
 
-	for (let y = 0; y < asciiHeight; y++) {
-		for (let x = 0; x < asciiWidth; x++) {
-			const index = (y * asciiWidth + x) * 4;
-            if (index + 3 >= pixelData.length) {
-                console.warn(`Pixel data access out of bounds at x:${x}, y:${y}. Index: ${index}, Length: ${pixelData.length}`);
-                continue; // Skip this pixel if out of bounds
-            }
-			const r = pixelData[index];
-			const g = pixelData[index + 1];
-			const b = pixelData[index + 2];
+	for (let y = 0; y < downscaleCanvas.height; y++) {
+		for (let x = 0; x < downscaleCanvas.width; x++) {
+			const i = (y * downscaleCanvas.width + x) * 4;
+			// Calculate grayscale brightness (average method)
+			let r = data[i];
+			let g = data[i + 1];
+			let b = data[i + 2];
 
-			// Calculate brightness (luminance)
-			let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255; // Normalized 0-1
+			// Apply Brightness & Contrast (simplified formula)
+			// Adjust brightness first, then contrast around mid-gray (128)
+			r = (r - 128) * contrastFactor + 128 * brightnessFactor;
+			g = (g - 128) * contrastFactor + 128 * brightnessFactor;
+			b = (b - 128) * contrastFactor + 128 * brightnessFactor;
 
-			// Apply contrast (adjust midpoint to 0.5 before scaling)
-			brightness = (brightness - 0.5) * contrastFactor + 0.5;
+			// Clamp values
+			r = Math.max(0, Math.min(255, r));
+			g = Math.max(0, Math.min(255, g));
+			b = Math.max(0, Math.min(255, b));
 
-			// Apply brightness offset
-			brightness += brightnessOffset;
+			let gray = (r + g + b) / 3;
 
-			// Clamp brightness
-			brightness = Math.max(0, Math.min(1, brightness));
-
-			// Invert if needed
+			// Invert if checked
 			if (invert) {
-				brightness = 1.0 - brightness;
+				gray = 255 - gray;
 			}
 
-			// Map brightness to ASCII character
-            // Avoid index out of bounds by clamping index calculation result
-            const charIndex = Math.min(numChars - 1, Math.floor(brightness * numChars));
+			// Map grayscale value to ASCII character index
+			const charIndex = Math.min(
+				numChars - 1,
+				Math.floor((gray / 255) * numChars),
+			);
 			asciiString += asciiChars[charIndex];
 		}
-		asciiString += "\n"; // Newline for each row
+		asciiString += "\n"; // Newline after each row
 	}
 
-	// 6. Display ASCII
+	// 6. Update the display element
 	uiElements.display.textContent = asciiString;
-    // console.log("ASCII display updated."); // Log success
 }
 
 // --- Animation Loop ---
@@ -1041,6 +1085,7 @@ function animate() { // Removed currentTime parameter as it's unused
 	// Avoid parameter reassignment for currentTime
 	const elapsedSeconds = clock.getElapsedTime(); // Use THREE.Clock's elapsed time
 	const delta = clock.getDelta(); // Use THREE.Clock's delta time
+    const now = performance.now(); // Use performance.now() for GIF timing
 
 	if (!isPaused) {
         // console.log("Animation running..."); // Log inside loop if needed (can be noisy)
@@ -1050,8 +1095,8 @@ function animate() { // Removed currentTime parameter as it's unused
 
         // Subtle global camera rotation (can be overridden by specific animation updates)
         if (camera && currentAnimationType !== 'lissajous') { // Example: Don't apply global rotation to lissajous
-            camera.rotation.y += delta * 0.01; // Slow rotation around Y axis
-            camera.rotation.x += delta * 0.005; // Slow rotation around X axis
+            // camera.rotation.y += delta * 0.01; // Slow rotation around Y axis
+            // camera.rotation.x += delta * 0.005; // Slow rotation around X axis
         }
 
         // Subtle background hue shift
@@ -1063,8 +1108,7 @@ function animate() { // Removed currentTime parameter as it's unused
 
 
 		// Get the update function from the current animation's module
-		const currentAnimationModule =
-			window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal for key
+		const currentAnimationModule = window[`${currentAnimationType.toUpperCase()}_ANIMATION`]; // Use template literal for key
 		if (currentAnimationModule?.update) { // Use optional chaining
 			try {
 				// Pass delta and elapsedTime (or just rely on global clock if modules use it)
@@ -1081,7 +1125,22 @@ function animate() { // Removed currentTime parameter as it's unused
 
 		// Render the frame to ASCII
 		renderToAscii();
-	}
+
+        // Add frame to GIF if recording
+        if (isRecordingGif && gifEncoder && downscaleCanvas && now >= lastGifFrameTime + GIF_FRAME_DELAY) {
+            addFrameToGif();
+            lastGifFrameTime = now;
+
+            // Check if recording duration is over
+            if (now >= gifRecordStartTime + GIF_RECORD_DURATION) {
+                stopGifRecording();
+            }
+        }
+
+	} else if (isRecordingGif) {
+        // If paused but recording was active, stop recording
+        stopGifRecording();
+    }
 
 	animationFrameId = requestAnimationFrame(animate);
 }
@@ -1127,6 +1186,19 @@ function randomizeParameters() {
 	if (uiElements.lightPosZ) uiElements.lightPosZ.value = (Math.random() * 20 - 10).toFixed(1);
 
 	// Trigger events for global controls to update UI/state AFTER setting values
+	// Dispatch 'input' or 'change' events on the randomized global controls
+    const globalControlsToDispatch = [
+        uiElements.brightness, uiElements.contrast, uiElements.invert,
+        uiElements.charset, uiElements.renderTargetResolution,
+        uiElements.ambientIntensity, uiElements.directionalIntensity,
+        uiElements.lightPosX, uiElements.lightPosY, uiElements.lightPosZ
+    ];
+    for (const control of globalControlsToDispatch) {
+        if (control) {
+            const eventType = (control.tagName === 'SELECT' || control.type === 'checkbox') ? 'change' : 'input';
+            control.dispatchEvent(new Event(eventType, { bubbles: true }));
+        }
+    }
 	updateAllValueDisplays(); // This should trigger listeners to update values/lights
 
 	// 2. Select a Random Animation Type (excluding lighting itself)
@@ -1153,9 +1225,396 @@ function randomizeParameters() {
 	switchAnimation(randomType);
 }
 
-// --- Utility Functions ---
-// (debounce, clamp, etc. if needed)
+// --- GIF Recording Functions ---
+const toggleGifRecording = () => {
+    if (isRecordingGif) {
+        stopGifRecording();
+    } else {
+        startGifRecording();
+    }
+};
+
+const startGifRecording = () => {
+    if (isRecordingGif) return; // Already recording
+    if (!downscaleCanvas || downscaleCanvas.width === 0 || downscaleCanvas.height === 0) {
+        alert("Cannot record GIF: Canvas not ready or has zero dimensions.");
+        return;
+    }
+
+
+    console.log("Starting GIF recording...");
+    isRecordingGif = true;
+    gifRecordStartTime = performance.now();
+    lastGifFrameTime = gifRecordStartTime; // Initialize last frame time
+
+    // Disable button and update text
+    uiElements.recordGifButton.disabled = true;
+    uiElements.recordGifButton.textContent = "Recording... (0%)";
+
+    // Initialize GIFEncoder
+    gifEncoder = new GIF({
+        workers: 2, // Number of web workers to use
+        quality: 10, // Lower quality for faster processing (1-30)
+        width: downscaleCanvas.width, // Use downscale canvas size
+        height: downscaleCanvas.height,
+        workerScript: 'js/libs/gif.worker.js', // Path to worker script
+        background: '#0d1117', // Match container background
+        // dither: true, // Optional: Dithering method
+    });
+
+    // Add the first frame immediately
+    addFrameToGif();
+
+    // Event listener for GIF rendering progress
+    gifEncoder.on('progress', (p) => {
+        if (uiElements.recordGifButton.textContent.startsWith("Rendering")) {
+            uiElements.recordGifButton.textContent = `Rendering... (${Math.round(p * 100)}%)`;
+        }
+    });
+
+    // Event listener for GIF rendering finished
+    gifEncoder.on('finished', (blob) => {
+        console.log("GIF rendering finished.");
+        const url = URL.createObjectURL(blob);
+        // Create a link and trigger download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ascii_animation_${Date.now()}.gif`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Reset button
+        uiElements.recordGifButton.disabled = false;
+        uiElements.recordGifButton.textContent = "Record GIF (5s)";
+        gifEncoder = null; // Clear encoder reference
+    });
+
+    // Update button text periodically during recording phase
+    const recordingInterval = setInterval(() => {
+        if (!isRecordingGif || !uiElements.recordGifButton.textContent.startsWith("Recording")) {
+            clearInterval(recordingInterval);
+            return;
+        }
+        const elapsed = performance.now() - gifRecordStartTime;
+        const progress = Math.min(100, Math.floor((elapsed / GIF_RECORD_DURATION) * 100));
+        uiElements.recordGifButton.textContent = `Recording... (${progress}%)`;
+    }, 250); // Update text 4 times per second
+};
+
+const addFrameToGif = () => {
+    if (!gifEncoder || !downscaleCtx) return;
+    // console.log("Adding frame to GIF"); // Can be noisy
+    try {
+        // Get the current frame from the downscale canvas context
+        gifEncoder.addFrame(downscaleCtx, {
+            copy: true, // Copy the pixels from the context
+            delay: GIF_FRAME_DELAY, // Use the defined frame delay
+        });
+    } catch (error) {
+        console.error("Error adding frame to GIF:", error);
+        stopGifRecording(true); // Abort recording on error
+    }
+};
+
+const stopGifRecording = (forceAbort = false) => {
+    if (!isRecordingGif) return; // Not recording
+
+    console.log(forceAbort ? "Aborting GIF recording." : "Stopping GIF recording, starting render...");
+    isRecordingGif = false;
+
+    if (forceAbort || !gifEncoder) {
+        gifEncoder = null; // Ensure encoder is nullified
+        // Reset button immediately if aborting
+        uiElements.recordGifButton.disabled = false;
+        uiElements.recordGifButton.textContent = "Record GIF (5s)";
+        return;
+    }
+
+    // Start the rendering process
+    uiElements.recordGifButton.textContent = "Rendering... (0%)";
+    // Button remains disabled until 'finished' or error
+
+    try {
+        gifEncoder.render();
+    } catch (error) {
+        console.error("Error starting GIF render:", error);
+        gifEncoder = null; // Nullify on error
+        // Reset button on error
+         uiElements.recordGifButton.disabled = false;
+         uiElements.recordGifButton.textContent = "Record GIF (5s)";
+    } finally {
+        // Re-enable button after render attempt (success handled by 'finished' event)
+         setTimeout(() => { // Delay slightly to allow 'finished' event to potentially reset first
+             if (uiElements.recordGifButton.disabled && !gifEncoder) { // Only reset if still disabled AND encoder is finished/nulled
+                 uiElements.recordGifButton.disabled = false;
+                 if (uiElements.recordGifButton.textContent.startsWith("Rendering")) {
+                    uiElements.recordGifButton.textContent = "Record GIF (5s)";
+                 }
+             }
+         }, 500);
+    }
+};
+
+
+// --- Preset Functions ---
+
+function getAllControlValues() {
+    const values = {
+        // Include global controls
+        resolution: uiElements.resolution.value,
+        charset: uiElements.charset.value,
+        brightness: uiElements.brightness.value,
+        contrast: uiElements.contrast.value,
+        zoom: uiElements.zoom.value,
+        invert: uiElements.invert.checked,
+        renderTargetResolution: uiElements.renderTargetResolution.value,
+        animationType: currentAnimationType, // Store the type itself
+
+        // Include lighting controls
+        ambientIntensity: uiElements.ambientIntensity.value,
+        directionalIntensity: uiElements.directionalIntensity.value,
+        lightPosX: uiElements.lightPosX.value,
+        lightPosY: uiElements.lightPosY.value,
+        lightPosZ: uiElements.lightPosZ.value,
+    };
+
+    // Include controls for *all* animations, even inactive ones
+    const allControls = [
+        // Torus
+        uiElements.torusSpeed, uiElements.torusThickness, uiElements.torusMajorRadius,
+        uiElements.torusRoughness, uiElements.torusMetalness, uiElements.torusRotationAxis, uiElements.torusColorPicker,
+        // Noise
+        uiElements.noiseScale, uiElements.noiseSpeedX, uiElements.noiseSpeedY, uiElements.noiseBrightness, uiElements.noiseOctaves, // Added octaves
+        // Particles
+        uiElements.particleCount, uiElements.particleSize, uiElements.particleSpeed,
+        uiElements.particleLifespan, uiElements.particleEmitterShape, uiElements.particleEmitterSize,
+        uiElements.particleForceType, uiElements.particleForceStrength,
+        // Kaleidoscope
+        uiElements.kaleidoscopeSegments, uiElements.kaleidoscopeNoiseScale,
+        uiElements.kaleidoscopeNoiseSpeedX, uiElements.kaleidoscopeNoiseSpeedY, uiElements.kaleidoscopeNoiseBrightness,
+        // Morph
+        uiElements.morphSpeed, uiElements.morphRotationSpeed, uiElements.morphComplexity, uiElements.morphColorPicker, // Added color picker
+        // Metaballs
+        uiElements.metaballsCount, uiElements.metaballsSize, uiElements.metaballsSpeed,
+        uiElements.metaballsThreshold, uiElements.metaballsColor,
+        // Lissajous
+        uiElements.lissajousA, uiElements.lissajousB, uiElements.lissajousDelta,
+        uiElements.lissajousAmpA, uiElements.lissajousAmpB, uiElements.lissajousSpeed,
+        uiElements.lissajousPoints,
+    ];
+
+    for (const control of allControls) {
+        if (control?.id) { // Use optional chaining
+            values[control.id] = control.type === 'checkbox' ? control.checked : control.value;
+        }
+    }
+
+    return values;
+}
+
+function applyControlValues(values) {
+    if (!values) return;
+
+    // Apply global controls first
+    if (values.resolution !== undefined) uiElements.resolution.value = values.resolution;
+    if (values.charset !== undefined) uiElements.charset.value = values.charset;
+    if (values.brightness !== undefined) uiElements.brightness.value = values.brightness;
+    if (values.contrast !== undefined) uiElements.contrast.value = values.contrast;
+    if (values.zoom !== undefined) uiElements.zoom.value = values.zoom;
+    if (values.invert !== undefined) uiElements.invert.checked = values.invert;
+    if (values.renderTargetResolution !== undefined) uiElements.renderTargetResolution.value = values.renderTargetResolution;
+
+    // Apply lighting controls
+    if (values.ambientIntensity !== undefined) {
+        uiElements.ambientIntensity.value = values.ambientIntensity;
+        if (animationObjects.ambientLight) {
+            animationObjects.ambientLight.intensity = Number.parseFloat(values.ambientIntensity);
+        }
+    }
+    if (values.directionalIntensity !== undefined) {
+        uiElements.directionalIntensity.value = values.directionalIntensity;
+        if (animationObjects.directionalLight) {
+            animationObjects.directionalLight.intensity = Number.parseFloat(values.directionalIntensity);
+        }
+    }
+    if (values.lightPosX !== undefined) uiElements.lightPosX.value = values.lightPosX;
+    if (values.lightPosY !== undefined) uiElements.lightPosY.value = values.lightPosY;
+    if (values.lightPosZ !== undefined) uiElements.lightPosZ.value = values.lightPosZ;
+    // Update directional light position if it exists
+    if (animationObjects.directionalLight &&
+        values.lightPosX !== undefined &&
+        values.lightPosY !== undefined &&
+        values.lightPosZ !== undefined) {
+        animationObjects.directionalLight.position.set(
+            Number.parseFloat(values.lightPosX),
+            Number.parseFloat(values.lightPosY),
+            Number.parseFloat(values.lightPosZ)
+        );
+    }
+
+
+    // Apply animation-specific controls
+    const allControls = [ /* ... same list as in getAllControlValues ... */
+        // Torus
+        uiElements.torusSpeed, uiElements.torusThickness, uiElements.torusMajorRadius,
+        uiElements.torusRoughness, uiElements.torusMetalness, uiElements.torusRotationAxis, uiElements.torusColorPicker,
+        // Noise
+        uiElements.noiseScale, uiElements.noiseSpeedX, uiElements.noiseSpeedY, uiElements.noiseBrightness, uiElements.noiseOctaves, // Added octaves
+        // Particles
+        uiElements.particleCount, uiElements.particleSize, uiElements.particleSpeed,
+        uiElements.particleLifespan, uiElements.particleEmitterShape, uiElements.particleEmitterSize,
+        uiElements.particleForceType, uiElements.particleForceStrength,
+        // Kaleidoscope
+        uiElements.kaleidoscopeSegments, uiElements.kaleidoscopeNoiseScale,
+        uiElements.kaleidoscopeNoiseSpeedX, uiElements.kaleidoscopeNoiseSpeedY, uiElements.kaleidoscopeNoiseBrightness,
+        // Morph
+        uiElements.morphSpeed, uiElements.morphRotationSpeed, uiElements.morphComplexity, uiElements.morphColorPicker, // Added color picker
+        // Metaballs
+        uiElements.metaballsCount, uiElements.metaballsSize, uiElements.metaballsSpeed,
+        uiElements.metaballsThreshold, uiElements.metaballsColor,
+        // Lissajous
+        uiElements.lissajousA, uiElements.lissajousB, uiElements.lissajousDelta,
+        uiElements.lissajousAmpA, uiElements.lissajousAmpB, uiElements.lissajousSpeed,
+        uiElements.lissajousPoints,
+    ];
+
+    for (const control of allControls) {
+        if (control?.id && values[control.id] !== undefined) { // Use optional chaining
+            if (control.type === 'checkbox') {
+                control.checked = values[control.id];
+            } else {
+                control.value = values[control.id];
+            }
+            // Dispatch input/change event to trigger handlers and UI updates
+            const eventType = (control.tagName === 'SELECT' || control.type === 'checkbox' || control.type === 'color') ? 'change' : 'input'; // Added color type
+            control.dispatchEvent(new Event(eventType, { bubbles: true }));
+        }
+    }
+
+    // Update global state from loaded values
+    if (values.charset !== undefined) {
+        uiElements.charset.value = values.charset;
+        asciiChars = ASCII_CHARS_MAP[values.charset] || ASCII_CHARS_MAP.dense;
+    }
+    if (camera && values.zoom !== undefined) camera.position.z = Number.parseFloat(values.zoom);
+    setupRenderTargetAndCanvas(); // Update canvas/render target based on resolution
+
+    // Switch to the correct animation type *last*
+    if (values.animationType && values.animationType !== currentAnimationType) {
+        switchAnimation(values.animationType);
+    } else {
+        // If type didn't change, ensure UI labels and handlers are updated
+        updateAllValueDisplays();
+        // Manually trigger param change for the current animation if needed
+        // This might be redundant if dispatchEvent above already triggered it,
+        // but ensures the module's state is consistent if dispatchEvent wasn't enough.
+        const currentModule = window[`${currentAnimationType.toUpperCase()}_ANIMATION`];
+        currentModule?.handleParamChange?.(); // Use optional chaining
+    }
+}
+
+
+function getPresets() {
+    const presetsJson = localStorage.getItem(PRESET_STORAGE_KEY);
+    try {
+        return presetsJson ? JSON.parse(presetsJson) : {};
+    } catch (e) {
+        console.error("Error parsing presets from localStorage:", e);
+        return {}; // Return empty object on error
+    }
+}
+
+function savePreset() {
+    const presetName = uiElements.presetNameInput.value.trim();
+    if (!presetName) {
+        alert("Please enter a name for the preset.");
+        return;
+    }
+
+    const presets = getPresets();
+    presets[presetName] = getAllControlValues();
+
+    try {
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+        console.log(`Preset "${presetName}" saved.`);
+        updatePresetList(); // Refresh dropdown
+        uiElements.presetNameInput.value = ""; // Clear input field
+    } catch (error) {
+        console.error("Error saving preset to localStorage:", error);
+        alert("Failed to save preset. LocalStorage might be full or disabled.");
+    }
+}
+
+function loadPreset() {
+    const presetName = uiElements.presetLoadSelect.value;
+    if (!presetName) {
+        alert("Please select a preset to load.");
+        return;
+    }
+
+    const presets = getPresets();
+    const valuesToLoad = presets[presetName];
+
+    if (valuesToLoad) {
+        console.log(`Loading preset "${presetName}"...`);
+        applyControlValues(valuesToLoad);
+        console.log(`Preset "${presetName}" loaded.`);
+    } else {
+        alert(`Preset "${presetName}" not found.`);
+    }
+}
+
+function deletePreset() {
+    const presetName = uiElements.presetLoadSelect.value;
+    if (!presetName) {
+        alert("Please select a preset to delete.");
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to delete the preset "${presetName}"?`)) {
+        return;
+    }
+
+    const presets = getPresets();
+    if (presets[presetName]) {
+        delete presets[presetName];
+        try {
+            localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+            console.log(`Preset "${presetName}" deleted.`);
+            updatePresetList(); // Refresh dropdown
+        } catch (error) {
+            console.error("Error deleting preset from localStorage:", error);
+            alert("Failed to delete preset.");
+        }
+    } else {
+        alert(`Preset "${presetName}" not found.`);
+    }
+}
+
+function updatePresetList() {
+    const presets = getPresets();
+    const select = uiElements.presetLoadSelect;
+    if (!select) return; // Guard against missing element
+
+    // Clear existing options (except the default)
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+
+    // Add options for each saved preset
+    for (const name in presets) {
+        // No need for hasOwnProperty check with for...in on JSON parsed object
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+    }
+    console.log("Preset list updated.");
+}
+
 
 // --- Start ---
-// Use DOMContentLoaded to ensure elements are ready, especially display dimensions
+// Use DOMContentLoaded to ensure all elements are available
 document.addEventListener("DOMContentLoaded", init);

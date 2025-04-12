@@ -22,103 +22,79 @@ window.LISSAJOUS_ANIMATION = {
 
 // Lissajous Curves Animation
 function setupLissajousAnimation() {
+    console.log("Setting up Lissajous animation"); // Add log
+    // Ensure controls exist
+    if (!lissajousControls || !lissajousControls.sliderPoints || !lissajousControls.sliderA || !lissajousControls.sliderB || !lissajousControls.sliderDelta || !lissajousControls.sliderAmpA || !lissajousControls.sliderAmpB || !lissajousControls.sliderSpeed) {
+        console.error("Lissajous controls not found!");
+        return;
+    }
+
     const pointCount = Number.parseInt(lissajousControls.sliderPoints.value);
-    // lissajousControls.valuePoints.textContent = pointCount; // Handled by script.js listener/updateAllValueDisplays
     const positions = new Float32Array(pointCount * 3);
+    const colors = new Float32Array(pointCount * 3); // Add colors array
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); // Add color attribute
 
-    // Initialize positions (can be all zero initially)
+    // Initialize positions and colors (all black/transparent initially)
     for (let i = 0; i < pointCount; i++) {
         positions[i * 3] = 0;
         positions[i * 3 + 1] = 0;
         positions[i * 3 + 2] = 0;
+        colors[i * 3] = 0; // R
+        colors[i * 3 + 1] = 0; // G
+        colors[i * 3 + 2] = 0; // B
     }
     geometry.attributes.position.needsUpdate = true;
-    // Set initial draw range to 0, we'll expand it in the animate loop
-    geometry.setDrawRange(0, 0);
+    geometry.attributes.color.needsUpdate = true;
+    // Don't set draw range, we draw all points but fade them
 
     // Create a color based on time of day for visual interest
     const now = new Date();
     const hue = (now.getHours() % 12) / 12;
     const startColor = new THREE.Color().setHSL(hue, 1, 0.5);
 
-    // Create a more interesting visual with gradient material
+    // Material now uses vertex colors
     const material = new THREE.LineBasicMaterial({
-        color: startColor,
-        linewidth: 2 // Note: linewidth > 1 may not work on all platforms/drivers
+        // color: startColor, // Color is now per-vertex
+        vertexColors: true, // Enable vertex colors
+        linewidth: 2
     });
 
-    // Add secondary trail for a more dynamic effect
-    const secondaryPositions = new Float32Array(pointCount * 3);
-    const secondaryGeometry = new THREE.BufferGeometry();
-    secondaryGeometry.setAttribute('position', new THREE.BufferAttribute(secondaryPositions, 3));
-    secondaryGeometry.setDrawRange(0, 0);
-
-    const secondaryColor = new THREE.Color().setHSL((hue + 0.5) % 1.0, 0.8, 0.6);
-    const secondaryMaterial = new THREE.LineBasicMaterial({
-        color: secondaryColor,
-        linewidth: 1,
-        opacity: 0.7,
-        transparent: true
-    });
-
-    // Add a third line for additional visual complexity
-    const tertiaryPositions = new Float32Array(pointCount * 3);
-    const tertiaryGeometry = new THREE.BufferGeometry();
-    tertiaryGeometry.setAttribute('position', new THREE.BufferAttribute(tertiaryPositions, 3));
-    tertiaryGeometry.setDrawRange(0, 0);
-
-    const tertiaryColor = new THREE.Color().setHSL((hue + 0.33) % 1.0, 0.9, 0.4);
-    const tertiaryMaterial = new THREE.LineBasicMaterial({
-        color: tertiaryColor,
-        linewidth: 1,
-        opacity: 0.5,
-        transparent: true
-    });
+    // Remove secondary/tertiary lines for simplicity with fading trail
+    // const secondaryPositions = ...
+    // const secondaryGeometry = ...
+    // const secondaryMaterial = ...
+    // const tertiaryPositions = ...
+    // const tertiaryGeometry = ...
+    // const tertiaryMaterial = ...
 
     const line = new THREE.Line(geometry, material);
     line.name = "lissajousLine";
 
-    const secondaryLine = new THREE.Line(secondaryGeometry, secondaryMaterial);
-    secondaryLine.name = "lissajousSecondaryLine";
-
-    const tertiaryLine = new THREE.Line(tertiaryGeometry, tertiaryMaterial);
-    tertiaryLine.name = "lissajousTertiaryLine";
-
-    // Create a group to hold all lines for easier manipulation
-    const lissajousGroup = new THREE.Group();
-    lissajousGroup.name = "lissajousGroup";
-    lissajousGroup.add(line);
-    lissajousGroup.add(secondaryLine);
-    lissajousGroup.add(tertiaryLine);
+    // Remove group if only one line
+    // const lissajousGroup = new THREE.Group();
+    // lissajousGroup.name = "lissajousGroup";
+    // lissajousGroup.add(line);
+    // lissajousGroup.add(secondaryLine);
+    // lissajousGroup.add(tertiaryLine);
 
     animationObjects.line = line;
     animationObjects.geometry = geometry;
     animationObjects.material = material;
     animationObjects.positions = positions;
+    animationObjects.colors = colors; // Store colors array
     animationObjects.pointCount = pointCount;
     animationObjects.baseHue = hue;
-    animationObjects.secondaryLine = secondaryLine;
-    animationObjects.secondaryGeometry = secondaryGeometry;
-    animationObjects.secondaryMaterial = secondaryMaterial;
-    animationObjects.secondaryPositions = secondaryPositions;
-    animationObjects.tertiaryLine = tertiaryLine;
-    animationObjects.tertiaryGeometry = tertiaryGeometry;
-    animationObjects.tertiaryMaterial = tertiaryMaterial;
-    animationObjects.tertiaryPositions = tertiaryPositions;
-    animationObjects.lissajousGroup = lissajousGroup;
-    // Transition state (optional, for smooth parameter changes)
-    animationObjects.transitionState = {
-        active: false,
-        duration: 1.0,
-        startTime: 0,
-        startParams: {},
-        targetParams: {}
-    };
-    animationObjects.drawCount = 0; // Track how many points are currently drawn
+    animationObjects.currentPointIndex = 0; // Track the current "head" of the line
+    // Remove secondary/tertiary objects
+    // animationObjects.secondaryLine = ...
+    // ...
+    // animationObjects.lissajousGroup = lissajousGroup;
+    // ... transition state ...
+    // animationObjects.drawCount = 0; // No longer needed
 
-    scene.add(lissajousGroup);
+    scene.add(line); // Add line directly
 
     // Add listeners for parameter changes - Handled centrally in script.js
     // const ljSliders = [ ... ];
@@ -130,41 +106,38 @@ function setupLissajousAnimation() {
 
 // Cleanup function for Lissajous animation
 function cleanupLissajousAnimation() {
+    console.log("Cleaning up Lissajous animation"); // Add log
     // Remove event listeners (handled centrally in script.js)
     // ...
 
-    // Remove objects from scene
-    if (animationObjects.lissajousGroup) {
-        scene.remove(animationObjects.lissajousGroup);
+    // Remove object from scene
+    if (animationObjects.line) {
+        scene.remove(animationObjects.line);
     }
+    // Remove group if it exists
+    // if (animationObjects.lissajousGroup) {
+    //     scene.remove(animationObjects.lissajousGroup);
+    // }
 
-    // Dispose of geometries and materials
-    if (animationObjects.geometry) { animationObjects.geometry.dispose(); }
-    if (animationObjects.material) { animationObjects.material.dispose(); }
-    if (animationObjects.secondaryGeometry) { animationObjects.secondaryGeometry.dispose(); }
-    if (animationObjects.secondaryMaterial) { animationObjects.secondaryMaterial.dispose(); }
-    if (animationObjects.tertiaryGeometry) { animationObjects.tertiaryGeometry.dispose(); }
-    if (animationObjects.tertiaryMaterial) { animationObjects.tertiaryMaterial.dispose(); }
+    // Dispose of geometry and material
+    if (animationObjects.geometry?.dispose) { animationObjects.geometry.dispose(); }
+    if (animationObjects.material?.dispose) { animationObjects.material.dispose(); }
+    // Dispose secondary/tertiary if they existed
+    // ...
 
     // Clear references in animationObjects
     animationObjects.line = null;
     animationObjects.geometry = null;
-    // ... (clear all other properties added in setup)
     animationObjects.material = null;
     animationObjects.positions = null;
+    animationObjects.colors = null; // Clear colors
     animationObjects.pointCount = null;
     animationObjects.baseHue = null;
-    animationObjects.secondaryLine = null;
-    animationObjects.secondaryGeometry = null;
-    animationObjects.secondaryMaterial = null;
-    animationObjects.secondaryPositions = null;
-    animationObjects.tertiaryLine = null;
-    animationObjects.tertiaryGeometry = null;
-    animationObjects.tertiaryMaterial = null;
-    animationObjects.tertiaryPositions = null;
-    animationObjects.lissajousGroup = null;
-    animationObjects.transitionState = null;
-    animationObjects.drawCount = null;
+    animationObjects.currentPointIndex = null; // Clear index
+    // Clear secondary/tertiary
+    // ...
+    // animationObjects.lissajousGroup = null;
+    // ...
 }
 
 
@@ -174,9 +147,14 @@ function handleLissajousParamChange() {
     if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'lissajous' || !animationObjects.line) {
         return; // Exit if not the active animation or not set up
     }
+    // Ensure controls exist before accessing them
+    if (!lissajousControls || !lissajousControls.sliderPoints || !lissajousControls.sliderA || !lissajousControls.sliderB || !lissajousControls.sliderDelta || !lissajousControls.sliderAmpA || !lissajousControls.sliderAmpB || !lissajousControls.sliderSpeed || !lissajousControls.valueA) { // Check one value display too
+        console.warn("Lissajous controls or value displays missing in handleLissajousParamChange.");
+        return;
+    }
 
-    // Update labels (This should ideally be done by the central script.js listener)
-    // We keep it here as a fallback or if the module needs immediate access to formatted values
+
+    // Update labels directly here as script.js listener calls this
     lissajousControls.valueA.textContent = lissajousControls.sliderA.value;
     lissajousControls.valueB.textContent = lissajousControls.sliderB.value;
     const deltaVal = Number.parseFloat(lissajousControls.sliderDelta.value);
@@ -184,16 +162,17 @@ function handleLissajousParamChange() {
     lissajousControls.valueAmpA.textContent = Number.parseFloat(lissajousControls.sliderAmpA.value).toFixed(1);
     lissajousControls.valueAmpB.textContent = Number.parseFloat(lissajousControls.sliderAmpB.value).toFixed(1);
     lissajousControls.valuePoints.textContent = lissajousControls.sliderPoints.value;
-    if (uiElements.lissajousSpeedValue) { // Check if element exists
+    // Check if speed value element exists
+    if (uiElements.lissajousSpeedValue) {
         uiElements.lissajousSpeedValue.textContent = Number.parseFloat(lissajousControls.sliderSpeed.value).toFixed(1);
     }
 
 
-    // Recreate geometry ONLY if point count changes significantly
+    // Recreate geometry ONLY if point count changes
     const newPointCount = Number.parseInt(lissajousControls.sliderPoints.value);
-    if (animationObjects.pointCount !== undefined && newPointCount !== animationObjects.pointCount && animationObjects.line) {
+    // Check if pointCount was stored during setup and if it differs
+    if (animationObjects.pointCount !== undefined && newPointCount !== animationObjects.pointCount) {
         console.log("Lissajous point count changed, recreating...");
-        // Store current parameters before cleanup if needed for transition
         cleanupLissajousAnimation();
         setupLissajousAnimation(); // Recreate everything
         return; // Exit after recreation
@@ -227,6 +206,12 @@ function startLissajousTransition(targetParams) {
 
 // Function to randomize Lissajous parameters for interesting shapes
 function randomizeLissajousParameters() {
+    console.log("Randomizing Lissajous parameters"); // Add log
+    // Ensure controls exist
+    if (!lissajousControls || !lissajousControls.sliderPoints || !lissajousControls.sliderA || !lissajousControls.sliderB || !lissajousControls.sliderDelta || !lissajousControls.sliderAmpA || !lissajousControls.sliderAmpB || !lissajousControls.sliderSpeed) {
+        console.error("Lissajous controls not found for randomization!");
+        return;
+    }
     // Generate random values within reasonable bounds
     const targetParams = {
         freqA: Math.floor(Math.random() * 9 + 1), // Integer frequencies often look better
@@ -247,7 +232,7 @@ function randomizeLissajousParameters() {
     // Don't randomize point count by default, can be disruptive
     // lissajousControls.sliderPoints.value = ...;
 
-    // Trigger input events to update labels and potentially start transition
+    // Trigger input events AFTER setting all values to update labels and potentially start transition
     const ljSliders = [
         lissajousControls.sliderA,
         lissajousControls.sliderB,
@@ -255,6 +240,7 @@ function randomizeLissajousParameters() {
         lissajousControls.sliderAmpA,
         lissajousControls.sliderAmpB,
         lissajousControls.sliderSpeed,
+        // lissajousControls.sliderPoints // Include if point count is randomized
     ];
     for (const slider of ljSliders) {
         if (slider) slider.dispatchEvent(new Event('input', { bubbles: true }));
@@ -262,6 +248,9 @@ function randomizeLissajousParameters() {
 
     // Optional: Start a smooth transition instead of snapping
     // startLissajousTransition(targetParams);
+
+    // Explicitly call handler to ensure labels/state are correct immediately after randomization
+    handleLissajousParamChange();
 }
 
 
@@ -311,65 +300,81 @@ function lerp(start, end, t) {
 
 // Animation update function for Lissajous
 function updateLissajousAnimation(deltaTime, elapsedTime) {
-    if (!animationObjects.line || !animationObjects.positions || !clock) return;
+    if (!animationObjects.line || !animationObjects.positions || !animationObjects.colors || !clock || !animationObjects.pointCount) return;
 
-    const params = getCurrentLissajousParameters(elapsedTime); // Get potentially transitioning params
+    const params = getCurrentLissajousParameters(elapsedTime);
     const positions = animationObjects.positions;
-    const secondaryPositions = animationObjects.secondaryPositions;
-    const tertiaryPositions = animationObjects.tertiaryPositions;
+    const colors = animationObjects.colors;
     const pointCount = animationObjects.pointCount;
     const geometry = animationObjects.geometry;
-    const secondaryGeometry = animationObjects.secondaryGeometry;
-    const tertiaryGeometry = animationObjects.tertiaryGeometry;
+    const baseHue = animationObjects.baseHue;
+    let currentPointIndex = animationObjects.currentPointIndex;
 
-    const freqA = params.freqA;
-    const freqB = params.freqB;
-    const delta = params.delta;
-    const ampA = params.ampA;
-    const ampB = params.ampB;
-    const speed = params.speed;
+    // Ensure params are valid numbers
+    const freqA = Number.isFinite(params.freqA) ? params.freqA : 1;
+    const freqB = Number.isFinite(params.freqB) ? params.freqB : 1;
+    const delta = Number.isFinite(params.delta) ? params.delta : 0;
+    const ampA = Number.isFinite(params.ampA) ? params.ampA : 3;
+    const ampB = Number.isFinite(params.ampB) ? params.ampB : 3;
+    const speed = Number.isFinite(params.speed) ? params.speed : 1;
 
-    // Calculate how many points to draw based on elapsed time and speed
-    // This creates the drawing effect
-    const pointsToDraw = Math.min(pointCount, Math.floor(elapsedTime * speed * 100)); // Adjust multiplier for drawing speed
-    animationObjects.drawCount = pointsToDraw;
+    // Calculate how many new points to add this frame based on speed and deltaTime
+    const pointsToAdd = Math.max(1, Math.floor(deltaTime * speed * 50)); // Adjust multiplier
 
-    // Update positions for the visible part of the curve
-    for (let i = 0; i < pointsToDraw; i++) {
-        const t = (i / (pointCount - 1)) * Math.PI * 2 * Math.max(freqA, freqB); // Parameter t for curve calculation
-        const i3 = i * 3;
+    const tempColor = new THREE.Color(); // Reuse color object
 
-        // Main line
+    for (let k = 0; k < pointsToAdd; k++) {
+        // Calculate the parameter 't' for the Lissajous curve based on the current index
+        // We wrap around the buffer cyclically
+        const tParam = (currentPointIndex / (pointCount - 1));
+        const tRange = Math.PI * 2 * Math.max(1, Math.max(freqA, freqB)); // Ensure full curve is drawn over pointCount
+        const t = tParam * tRange; // Use index to determine position on the curve
+
+        const i3 = currentPointIndex * 3;
+
+        // Calculate new position
         positions[i3] = ampA * Math.sin(freqA * t + delta);
         positions[i3 + 1] = ampB * Math.sin(freqB * t);
-        positions[i3 + 2] = 0; // Keep it 2D for now
+        positions[i3 + 2] = 0; // Keep it 2D
 
-        // Secondary line (e.g., slightly offset in time or parameters)
-        const tOffset1 = t - 0.1 / speed; // Small time offset
-        secondaryPositions[i3] = ampA * Math.sin(freqA * tOffset1 + delta);
-        secondaryPositions[i3 + 1] = ampB * Math.sin(freqB * tOffset1);
-        secondaryPositions[i3 + 2] = 0;
+        // Set the color of the new point to full brightness (e.g., based on hue)
+        const hueShift = (elapsedTime * 0.05) % 1.0;
+        tempColor.setHSL((baseHue + hueShift) % 1.0, 1, 0.5);
+        colors[i3] = tempColor.r;
+        colors[i3 + 1] = tempColor.g;
+        colors[i3 + 2] = tempColor.b;
 
-        // Tertiary line (e.g., different offset)
-        const tOffset2 = t - 0.2 / speed; // Larger time offset
-        tertiaryPositions[i3] = ampA * Math.sin(freqA * tOffset2 + delta);
-        tertiaryPositions[i3 + 1] = ampB * Math.sin(freqB * tOffset2);
-        tertiaryPositions[i3 + 2] = 0;
+        // Move to the next point index, wrapping around
+        currentPointIndex = (currentPointIndex + 1) % pointCount;
     }
+
+    // Fade out older points
+    const fadeRate = deltaTime * 1.5; // Adjust fade speed
+    for (let i = 0; i < pointCount; i++) {
+        const i3 = i * 3;
+        // Check if this point was just added - skip fading if so (optional optimization)
+        let justAdded = false;
+        for (let k = 0; k < pointsToAdd; k++) {
+            if (i === (currentPointIndex - 1 - k + pointCount) % pointCount) {
+                justAdded = true;
+                break;
+            }
+        }
+        if (justAdded) continue;
+
+        // Reduce color components towards black
+        colors[i3] = Math.max(0, colors[i3] - fadeRate);
+        colors[i3 + 1] = Math.max(0, colors[i3 + 1] - fadeRate);
+        colors[i3 + 2] = Math.max(0, colors[i3 + 2] - fadeRate);
+    }
+
+    // Store the updated index
+    animationObjects.currentPointIndex = currentPointIndex;
 
     // Update buffer attributes
     geometry.attributes.position.needsUpdate = true;
-    secondaryGeometry.attributes.position.needsUpdate = true;
-    tertiaryGeometry.attributes.position.needsUpdate = true;
+    geometry.attributes.color.needsUpdate = true;
 
-    // Update draw range to reveal the curve
-    geometry.setDrawRange(0, pointsToDraw);
-    secondaryGeometry.setDrawRange(0, pointsToDraw);
-    tertiaryGeometry.setDrawRange(0, pointsToDraw);
-
-    // Optional: Update line color hue based on time
-    const hueShift = (elapsedTime * 0.05) % 1.0;
-    animationObjects.material.color.setHSL((animationObjects.baseHue + hueShift) % 1.0, 1, 0.5);
-    animationObjects.secondaryMaterial.color.setHSL((animationObjects.baseHue + 0.5 + hueShift) % 1.0, 0.8, 0.6);
-    animationObjects.tertiaryMaterial.color.setHSL((animationObjects.baseHue + 0.33 + hueShift) % 1.0, 0.9, 0.4);
+    // No need to set draw range anymore
+    // geometry.setDrawRange(0, currentDrawCount);
 }
