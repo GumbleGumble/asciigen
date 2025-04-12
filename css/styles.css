@@ -25,6 +25,27 @@ body {
     min-height: 50px;
 }
 
+#ascii-output-container { /* Style the container */
+    background-color: #0d1117;
+    min-height: 200px; /* Ensure a minimum height */
+}
+
+#asciiDisplay { /* Adjusted styles for pre element */
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace; /* Use loaded font */
+    white-space: pre;
+    line-height: 1.0; /* Adjust line height for better fit */
+    letter-spacing: 0; /* Keep tight spacing */
+    font-size: 10px; /* Base font size, will be adjusted by JS */
+    overflow: hidden;
+    text-align: center;
+    /* Removed background, padding, border, aspect-ratio, width, height - handled by container and absolute positioning */
+    /* Ensure text doesn't cause unexpected overflow */
+    margin: 0;
+    padding: 0; /* Minimal padding if needed, or handled by container */
+    box-sizing: border-box;
+    /* color: #c9d1d9; */ /* Example text color */
+}
+
 input[type="range"] { 
     -webkit-appearance: none; 
     appearance: none; 

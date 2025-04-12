@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced ASCII Animator</title>
-    <!-- Use local Three.js or ensure global availability if not using modules -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
-    <!-- Assuming THREE is globally available or handled via import in script.js -->
+    <title>asciigen</title> <!-- Updated project name -->
     <script src="https://cdn.tailwindcss.com"></script> <!-- Keep Tailwind for styling -->
     <link rel="stylesheet" href="css/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +12,7 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <h1 class="text-3xl font-bold text-center mb-6 text-blue-300">Advanced ASCII Animator</h1>
+    <h1 class="text-3xl font-bold text-center mb-6 text-blue-300">asciigen</h1> <!-- Updated project name -->
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-1 space-y-4">
@@ -41,20 +38,17 @@
                 <div>
                     <label for="brightness-slider" class="slider-label">Brightness Offset:</label> <!-- Changed label for clarity -->
                     <input type="range" id="brightness-slider" name="brightness" min="0" max="1" value="0.5" step="0.01">
-                    <!-- Optional: Add span for value display if needed -->
-                    <!-- <span id="brightnessValue">0.50</span> -->
+                    <span class="text-sm text-gray-400"><span id="brightness-value">0.50</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="contrast-slider" class="slider-label">Contrast:</label>
                     <input type="range" id="contrast-slider" name="contrast" min="0.1" max="5" value="1.0" step="0.1">
-                    <!-- Optional: Add span for value display if needed -->
-                    <!-- <span id="contrastValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="contrast-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="zoom-slider" class="slider-label">Zoom:</label>
                     <input type="range" id="zoom-slider" name="zoom" min="3" max="40" value="15" step="0.1">
-                     <!-- Optional: Add span for value display if needed -->
-                    <!-- <span id="zoomValue">15.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="zoom-value">15.0</span></span> <!-- Added value display -->
                 </div>
                 <div class="mt-3">
                     <input type="checkbox" id="invert-brightness-checkbox">
@@ -68,6 +62,36 @@
                     <!-- Ensure button IDs match script.js -->
                     <button id="pausePlayButton">Pause</button>
                     <button id="randomizeButton">Randomize</button>
+                </div>
+            </div>
+
+            <!-- Lighting Controls Section -->
+            <div class="control-section">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Lighting Controls</h2>
+                <div>
+                    <label for="ambient-intensity-slider" class="slider-label">Ambient Intensity:</label>
+                    <input type="range" id="ambient-intensity-slider" name="ambient-intensity" min="0" max="2" value="0.5" step="0.05">
+                    <span class="text-sm text-gray-400"><span id="ambient-intensity-value">0.50</span></span>
+                </div>
+                <div>
+                    <label for="directional-intensity-slider" class="slider-label">Directional Intensity:</label>
+                    <input type="range" id="directional-intensity-slider" name="directional-intensity" min="0" max="3" value="0.8" step="0.1">
+                    <span class="text-sm text-gray-400"><span id="directional-intensity-value">0.8</span></span>
+                </div>
+                <div>
+                    <label for="light-pos-x-slider" class="slider-label">Light X Position:</label>
+                    <input type="range" id="light-pos-x-slider" name="light-pos-x" min="-10" max="10" value="1" step="0.5">
+                    <span class="text-sm text-gray-400"><span id="light-pos-x-value">1.0</span></span>
+                </div>
+                <div>
+                    <label for="light-pos-y-slider" class="slider-label">Light Y Position:</label>
+                    <input type="range" id="light-pos-y-slider" name="light-pos-y" min="-10" max="10" value="1" step="0.5">
+                    <span class="text-sm text-gray-400"><span id="light-pos-y-value">1.0</span></span>
+                </div>
+                <div>
+                    <label for="light-pos-z-slider" class="slider-label">Light Z Position:</label>
+                    <input type="range" id="light-pos-z-slider" name="light-pos-z" min="-10" max="10" value="1" step="0.5">
+                    <span class="text-sm text-gray-400"><span id="light-pos-z-value">1.0</span></span>
                 </div>
             </div>
 
@@ -92,7 +116,7 @@
                 <div>
                     <label for="torus-speed-slider" class="slider-label">Rotation Speed:</label>
                     <input type="range" id="torus-speed-slider" name="torus-speed" min="0.1" max="3.0" value="1.0" step="0.1">
-                    <!-- <span id="torusSpeedValue">1.000</span> -->
+                    <span class="text-sm text-gray-400"><span id="torus-speed-value">1.00</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="torus-thickness-slider" class="slider-label">Thickness Ratio:</label>
@@ -119,23 +143,23 @@
                 <div>
                     <label for="noise-scale-slider" class="slider-label">Noise Scale:</label>
                     <input type="range" id="noise-scale-slider" name="noise-scale" min="0.5" max="10.0" value="4.0" step="0.5">
-                    <!-- <span id="noiseScaleValue">4.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="noise-scale-value">4.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="noise-speed-slider" class="slider-label">Animation Speed:</label>
                     <input type="range" id="noise-speed-slider" name="noise-speed" min="0.1" max="3.0" value="1.0" step="0.1">
-                    <!-- <span id="noiseSpeedValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="noise-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="noise-brightness-slider" class="slider-label">Brightness:</label>
                     <input type="range" id="noise-brightness-slider" name="noise-brightness" min="0.1" max="5.0" value="1.0" step="0.1">
-                    <!-- <span id="noiseBrightnessValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="noise-brightness-value">1.0</span></span> <!-- Added value display -->
                 </div>
             </div>
 
             <div id="particles-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Particle System Controls</h2>
-                <div>
+                <div></div>
                     <label for="particles-count-slider" class="slider-label">Particle Count:</label>
                     <input type="range" id="particles-count-slider" name="particles-count" min="100" max="10000" value="1000" step="100">
                     <span class="text-sm text-gray-400"><span id="particles-count-value">1000</span> particles</span>
@@ -143,17 +167,17 @@
                 <div>
                     <label for="particles-size-slider" class="slider-label">Particle Size:</label>
                     <input type="range" id="particles-size-slider" name="particles-size" min="0.1" max="2.0" value="0.5" step="0.1">
-                    <!-- <span id="particleSizeValue">0.5</span> -->
+                    <span class="text-sm text-gray-400"><span id="particle-size-value">0.5</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="particles-speed-slider" class="slider-label">Speed:</label>
                     <input type="range" id="particles-speed-slider" name="particles-speed" min="0.1" max="5.0" value="1.0" step="0.1">
-                    <!-- <span id="particleSpeedValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="particle-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="particles-lifespan-slider" class="slider-label">Lifespan:</label>
                     <input type="range" id="particles-lifespan-slider" name="particles-lifespan" min="1" max="10" value="3" step="0.5">
-                    <!-- <span id="particleLifespanValue">3.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="particle-lifespan-value">3.0</span> s</span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="particles-emitter-shape" class="slider-label">Emitter Shape:</label>
@@ -166,7 +190,7 @@
                 <div>
                     <label for="particles-emitter-size-slider" class="slider-label">Emitter Size:</label>
                     <input type="range" id="particles-emitter-size-slider" name="particles-emitter-size" min="0.1" max="10.0" value="5.0" step="0.1">
-                    <!-- <span id="emitterSizeValue">5.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="particle-emitter-size-value">5.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="particles-force-type" class="slider-label">Force Type:</label>
@@ -179,13 +203,13 @@
                 <div>
                     <label for="particles-force-strength-slider" class="slider-label">Force Strength:</label>
                     <input type="range" id="particles-force-strength-slider" name="particles-force-strength" min="0.1" max="5.0" value="1.0" step="0.1">
-                    <!-- <span id="forceStrengthValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="particle-force-strength-value">1.0</span></span> <!-- Added value display -->
                 </div>
             </div>
 
             <div id="kaleidoscope-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Kaleidoscope Controls</h2>
-                <div>
+                <div></div>
                     <label for="kaleidoscope-segments-slider" class="slider-label">Segments:</label>
                     <input type="range" id="kaleidoscope-segments-slider" name="kal-segments" min="2" max="16" value="6" step="1">
                     <span class="text-sm text-gray-400"><span id="kaleidoscope-segments-value">6</span> segments</span>
@@ -193,31 +217,31 @@
                 <div>
                     <label for="kaleidoscope-noise-scale-slider" class="slider-label">Noise Scale:</label>
                     <input type="range" id="kaleidoscope-noise-scale-slider" name="kal-noise-scale" min="0.5" max="10.0" value="4.0" step="0.5">
-                    <!-- <span id="kaleidoscopeBaseNoiseScaleValue">4.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-scale-value">4.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="kaleidoscope-noise-speed-slider" class="slider-label">Noise Speed:</label>
                     <input type="range" id="kaleidoscope-noise-speed-slider" name="kal-noise-speed" min="0.1" max="3.0" value="1.0" step="0.1">
-                    <!-- <span id="kaleidoscopeBaseNoiseSpeedValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="kaleidoscope-noise-brightness-slider" class="slider-label">Brightness:</label>
                     <input type="range" id="kaleidoscope-noise-brightness-slider" name="kal-noise-brightness" min="0.1" max="5.0" value="1.0" step="0.1">
-                    <!-- <span id="kaleidoscopeBaseNoiseBrightnessValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-brightness-value">1.0</span></span> <!-- Added value display -->
                 </div>
             </div>
 
             <div id="morph-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Shape Morphing Controls</h2>
-                <div>
+                <div></div>
                     <label for="morph-speed-slider" class="slider-label">Morph Speed:</label>
                     <input type="range" id="morph-speed-slider" name="morph-speed" min="0.1" max="3.0" value="1.0" step="0.1">
-                    <!-- <span id="morphSpeedValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="morph-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="morph-rotation-slider" class="slider-label">Rotation Speed:</label>
                     <input type="range" id="morph-rotation-slider" name="morph-rotation" min="0" max="3.0" value="1.0" step="0.1">
-                    <!-- <span id="morphRotationSpeedValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="morph-rotation-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <!-- Add complexity slider if needed by morph.js -->
                 <!--
@@ -231,7 +255,7 @@
 
             <div id="metaballs-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Metaballs Controls</h2>
-                <div>
+                <div></div>
                     <label for="metaballs-count-slider" class="slider-label">Ball Count:</label>
                     <input type="range" id="metaballs-count-slider" name="mb-count" min="3" max="25" value="8" step="1">
                     <span class="text-sm text-gray-400"><span id="mb-count-value">8</span> balls</span>
@@ -244,6 +268,7 @@
                 <div>
                     <label for="metaballs-speed-slider" class="slider-label">Movement Speed:</label>
                     <input type="range" id="metaballs-speed-slider" name="mb-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <span class="text-sm text-gray-400"><span id="mb-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="metaballs-threshold-slider" class="slider-label">Blend Threshold:</label>
@@ -253,10 +278,11 @@
                 <div>
                     <label for="metaballs-color-slider" class="slider-label">Color Blend:</label>
                     <input type="range" id="metaballs-color-slider" name="mb-color" min="0" max="1" value="0.5" step="0.01">
+                    <span class="text-sm text-gray-400"><span id="mb-color-value">0.50</span></span> <!-- Added value display -->
                 </div>
             </div>
 
-            <div id="lissajous-controls" class="control-section animation-controls">
+            <div id="lissajous-controls" class="control-section animation-controls"></div>
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Lissajous Controls</h2>
                 <div>
                     <label for="lissajous-a-slider" class="slider-label">Frequency A (X):</label>
@@ -286,7 +312,7 @@
                 <div>
                     <label for="lissajous-speed-slider" class="slider-label">Drawing Speed:</label>
                     <input type="range" id="lissajous-speed-slider" name="lj-speed" min="0.1" max="5.0" value="1.0" step="0.1">
-                    <!-- <span id="lissajousDrawSpeedValue">1.0</span> -->
+                    <span class="text-sm text-gray-400"><span id="lj-speed-value">1.0</span></span> <!-- Added value display -->
                 </div>
                 <div>
                     <label for="lissajous-points-slider" class="slider-label">Curve Points:</label>
@@ -297,12 +323,10 @@
         </div>
 
         <!-- ASCII Output Area -->
-        <div class="md:col-span-2">
-            <div id="ascii-output-container" class="relative">
+        <div class="md:col-span-2 flex flex-col"> <!-- Use flex column for sizing -->
+            <div id="ascii-output-container" class="relative flex-grow border border-gray-700 rounded-lg overflow-hidden"> <!-- Make container grow and manage overflow -->
                 <!-- Ensure ID matches script.js -->
-                <pre id="asciiDisplay">Loading ASCII Animation...</pre> <!-- Changed ID from ascii-output -->
-                <!-- Hidden canvas for downscaling (used by script.js) -->
-                <!-- <canvas id="hidden-canvas" style="display: none;"></canvas> --> <!-- This is created dynamically in script.js now -->
+                <pre id="asciiDisplay" class="absolute inset-0 w-full h-full">Loading ASCII Animation...</pre> <!-- Position pre absolutely within container -->
             </div>
             <p class="text-xs text-gray-500 mt-2 text-center">Animation is rendered using Three.js and converted to ASCII characters.</p>
         </div>
