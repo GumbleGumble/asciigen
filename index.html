@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced ASCII Animator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Use local Three.js or ensure global availability if not using modules -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
+    <!-- Assuming THREE is globally available or handled via import in script.js -->
+    <script src="https://cdn.tailwindcss.com"></script> <!-- Keep Tailwind for styling -->
     <link rel="stylesheet" href="css/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,8 +19,10 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-1 space-y-4">
+            <!-- General Controls Section -->
             <div class="control-section">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">General Controls</h2>
+                <!-- Ensure IDs match uiElements in script.js -->
                 <div>
                     <label for="resolution-slider" class="slider-label">ASCII Resolution:</label>
                     <input type="range" id="resolution-slider" name="resolution" min="30" max="150" value="80">
@@ -35,30 +39,43 @@
                     </select>
                 </div>
                 <div>
-                    <label for="brightness-slider" class="slider-label">Brightness Threshold:</label>
+                    <label for="brightness-slider" class="slider-label">Brightness Offset:</label> <!-- Changed label for clarity -->
                     <input type="range" id="brightness-slider" name="brightness" min="0" max="1" value="0.5" step="0.01">
+                    <!-- Optional: Add span for value display if needed -->
+                    <!-- <span id="brightnessValue">0.50</span> -->
                 </div>
                 <div>
                     <label for="contrast-slider" class="slider-label">Contrast:</label>
                     <input type="range" id="contrast-slider" name="contrast" min="0.1" max="5" value="1.0" step="0.1">
+                    <!-- Optional: Add span for value display if needed -->
+                    <!-- <span id="contrastValue">1.0</span> -->
                 </div>
                 <div>
                     <label for="zoom-slider" class="slider-label">Zoom:</label>
                     <input type="range" id="zoom-slider" name="zoom" min="3" max="40" value="15" step="0.1">
+                     <!-- Optional: Add span for value display if needed -->
+                    <!-- <span id="zoomValue">15.0</span> -->
                 </div>
                 <div class="mt-3">
                     <input type="checkbox" id="invert-brightness-checkbox">
                     <label for="invert-brightness-checkbox" class="inline-label slider-label">Invert Brightness</label>
                 </div>
+                <div>
+                    <label for="renderTargetResolution" class="block text-sm font-medium text-gray-400">Render Resolution Scale (<span id="renderTargetResolutionValue">1.0</span>)</label>
+                    <input type="range" id="renderTargetResolution" min="0.1" max="1.5" step="0.05" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg dark:bg-gray-700">
+                </div>
                 <div class="mt-4 grid grid-cols-2 gap-2">
-                    <button id="pause-play-button">Pause</button>
-                    <button id="randomize-button">Randomize</button>
+                    <!-- Ensure button IDs match script.js -->
+                    <button id="pausePlayButton">Pause</button>
+                    <button id="randomizeButton">Randomize</button>
                 </div>
             </div>
 
+            <!-- Animation Type Selection -->
             <div class="control-section">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Animation Type</h2>
-                <select id="animation-select">
+                <!-- Ensure ID matches script.js -->
+                <select id="animationType"> <!-- Changed ID from animation-select -->
                     <option value="torus">Rotating Torus</option>
                     <option value="noise">Noise Field</option>
                     <option value="particles">Particle System</option>
@@ -69,16 +86,31 @@
                 </select>
             </div>
 
+            <!-- Animation Specific Controls (Ensure IDs match script.js and modules) -->
             <div id="torus-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Torus Controls</h2>
                 <div>
                     <label for="torus-speed-slider" class="slider-label">Rotation Speed:</label>
                     <input type="range" id="torus-speed-slider" name="torus-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <!-- <span id="torusSpeedValue">1.000</span> -->
                 </div>
                 <div>
                     <label for="torus-thickness-slider" class="slider-label">Thickness Ratio:</label>
                     <input type="range" id="torus-thickness-slider" name="torus-thickness" min="0.1" max="0.9" value="0.3" step="0.05">
                     <span class="text-sm text-gray-400"><span id="torus-thickness-value">0.3</span></span>
+                </div>
+                <div>
+                    <label for="torusMajorRadius" class="block text-sm font-medium text-gray-400">Major Radius (<span id="torusMajorRadiusValue">1.0</span>)</label> <!-- Updated default display -->
+                    <input type="range" id="torusMajorRadius" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg dark:bg-gray-700">
+                </div>
+                <div>
+                    <label for="torusRotationAxis" class="block text-sm font-medium text-gray-400">Rotation Axis</label>
+                    <select id="torusRotationAxis" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                        <option value="y">Y Axis</option>
+                        <option value="x">X Axis</option>
+                        <option value="z">Z Axis</option>
+                        <option value="xy">X+Y Axis</option>
+                    </select>
                 </div>
             </div>
 
@@ -87,14 +119,17 @@
                 <div>
                     <label for="noise-scale-slider" class="slider-label">Noise Scale:</label>
                     <input type="range" id="noise-scale-slider" name="noise-scale" min="0.5" max="10.0" value="4.0" step="0.5">
+                    <!-- <span id="noiseScaleValue">4.0</span> -->
                 </div>
                 <div>
                     <label for="noise-speed-slider" class="slider-label">Animation Speed:</label>
                     <input type="range" id="noise-speed-slider" name="noise-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <!-- <span id="noiseSpeedValue">1.0</span> -->
                 </div>
                 <div>
                     <label for="noise-brightness-slider" class="slider-label">Brightness:</label>
                     <input type="range" id="noise-brightness-slider" name="noise-brightness" min="0.1" max="5.0" value="1.0" step="0.1">
+                    <!-- <span id="noiseBrightnessValue">1.0</span> -->
                 </div>
             </div>
 
@@ -108,14 +143,17 @@
                 <div>
                     <label for="particles-size-slider" class="slider-label">Particle Size:</label>
                     <input type="range" id="particles-size-slider" name="particles-size" min="0.1" max="2.0" value="0.5" step="0.1">
+                    <!-- <span id="particleSizeValue">0.5</span> -->
                 </div>
                 <div>
                     <label for="particles-speed-slider" class="slider-label">Speed:</label>
                     <input type="range" id="particles-speed-slider" name="particles-speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                    <!-- <span id="particleSpeedValue">1.0</span> -->
                 </div>
                 <div>
                     <label for="particles-lifespan-slider" class="slider-label">Lifespan:</label>
                     <input type="range" id="particles-lifespan-slider" name="particles-lifespan" min="1" max="10" value="3" step="0.5">
+                    <!-- <span id="particleLifespanValue">3.0</span> -->
                 </div>
                 <div>
                     <label for="particles-emitter-shape" class="slider-label">Emitter Shape:</label>
@@ -128,6 +166,7 @@
                 <div>
                     <label for="particles-emitter-size-slider" class="slider-label">Emitter Size:</label>
                     <input type="range" id="particles-emitter-size-slider" name="particles-emitter-size" min="0.1" max="10.0" value="5.0" step="0.1">
+                    <!-- <span id="emitterSizeValue">5.0</span> -->
                 </div>
                 <div>
                     <label for="particles-force-type" class="slider-label">Force Type:</label>
@@ -140,6 +179,7 @@
                 <div>
                     <label for="particles-force-strength-slider" class="slider-label">Force Strength:</label>
                     <input type="range" id="particles-force-strength-slider" name="particles-force-strength" min="0.1" max="5.0" value="1.0" step="0.1">
+                    <!-- <span id="forceStrengthValue">1.0</span> -->
                 </div>
             </div>
 
@@ -153,14 +193,17 @@
                 <div>
                     <label for="kaleidoscope-noise-scale-slider" class="slider-label">Noise Scale:</label>
                     <input type="range" id="kaleidoscope-noise-scale-slider" name="kal-noise-scale" min="0.5" max="10.0" value="4.0" step="0.5">
+                    <!-- <span id="kaleidoscopeBaseNoiseScaleValue">4.0</span> -->
                 </div>
                 <div>
                     <label for="kaleidoscope-noise-speed-slider" class="slider-label">Noise Speed:</label>
                     <input type="range" id="kaleidoscope-noise-speed-slider" name="kal-noise-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <!-- <span id="kaleidoscopeBaseNoiseSpeedValue">1.0</span> -->
                 </div>
                 <div>
                     <label for="kaleidoscope-noise-brightness-slider" class="slider-label">Brightness:</label>
                     <input type="range" id="kaleidoscope-noise-brightness-slider" name="kal-noise-brightness" min="0.1" max="5.0" value="1.0" step="0.1">
+                    <!-- <span id="kaleidoscopeBaseNoiseBrightnessValue">1.0</span> -->
                 </div>
             </div>
 
@@ -169,11 +212,21 @@
                 <div>
                     <label for="morph-speed-slider" class="slider-label">Morph Speed:</label>
                     <input type="range" id="morph-speed-slider" name="morph-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <!-- <span id="morphSpeedValue">1.0</span> -->
                 </div>
                 <div>
                     <label for="morph-rotation-slider" class="slider-label">Rotation Speed:</label>
                     <input type="range" id="morph-rotation-slider" name="morph-rotation" min="0" max="3.0" value="1.0" step="0.1">
+                    <!-- <span id="morphRotationSpeedValue">1.0</span> -->
                 </div>
+                <!-- Add complexity slider if needed by morph.js -->
+                <!--
+                <div>
+                    <label for="morph-complexity-slider" class="slider-label">Complexity:</label>
+                    <input type="range" id="morph-complexity-slider" name="morph-complexity" min="8" max="64" value="32" step="4">
+                    <span id="morphComplexityValue">32</span>
+                </div>
+                -->
             </div>
 
             <div id="metaballs-controls" class="control-section animation-controls">
@@ -217,7 +270,7 @@
                 </div>
                 <div>
                     <label for="lissajous-delta-slider" class="slider-label">Phase Shift (Delta):</label>
-                    <input type="range" id="lissajous-delta-slider" name="lj-delta" min="0" max="3.14159" value="1.57079" step="0.01">
+                    <input type="range" id="lissajous-delta-slider" name="lj-delta" min="0" max="6.28318" value="1.57079" step="0.01"> <!-- Use 2*PI -->
                     <span class="text-sm text-gray-400"><span id="lj-delta-value">PI/2</span> rad</span>
                 </div>
                 <div>
@@ -233,6 +286,7 @@
                 <div>
                     <label for="lissajous-speed-slider" class="slider-label">Drawing Speed:</label>
                     <input type="range" id="lissajous-speed-slider" name="lj-speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                    <!-- <span id="lissajousDrawSpeedValue">1.0</span> -->
                 </div>
                 <div>
                     <label for="lissajous-points-slider" class="slider-label">Curve Points:</label>
@@ -242,16 +296,22 @@
             </div>
         </div>
 
+        <!-- ASCII Output Area -->
         <div class="md:col-span-2">
             <div id="ascii-output-container" class="relative">
-                <pre id="ascii-output">Loading ASCII Animation...</pre>
-                <canvas id="hidden-canvas" style="display: none;"></canvas>
+                <!-- Ensure ID matches script.js -->
+                <pre id="asciiDisplay">Loading ASCII Animation...</pre> <!-- Changed ID from ascii-output -->
+                <!-- Hidden canvas for downscaling (used by script.js) -->
+                <!-- <canvas id="hidden-canvas" style="display: none;"></canvas> --> <!-- This is created dynamically in script.js now -->
             </div>
             <p class="text-xs text-gray-500 mt-2 text-center">Animation is rendered using Three.js and converted to ASCII characters.</p>
         </div>
     </div>
 
-    <!-- Animation modules -->
+    <!-- Load Three.js (ensure it's available globally or adjust script.js import) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Animation modules (Load BEFORE script.js) -->
     <script src="js/animations/torus.js"></script>
     <script src="js/animations/noise.js"></script>
     <script src="js/animations/particles.js"></script>
@@ -259,9 +319,11 @@
     <script src="js/animations/morph.js"></script>
     <script src="js/animations/metaballs.js"></script>
     <script src="js/animations/lissajous.js"></script>
-    
-    <!-- Core animation functionality -->
-    <script src="js/main.js"></script>
+
+    <!-- Core animation functionality (Load AFTER modules) -->
+    <!-- <script src="js/main.js"></script> --> <!-- Removed main.js -->
+    <script type="module" src="js/script.js"></script> <!-- Load script.js as module if using import -->
+    <!-- If not using import, load as regular script: <script src="js/script.js"></script> -->
 
 </body>
 </html>
