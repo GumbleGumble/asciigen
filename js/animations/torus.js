@@ -212,7 +212,7 @@ function randomizeTorusParameters() {
 			control.dispatchEvent(new Event("change", { bubbles: true }));
 		} else if (control.type === "color") { // Randomize color
 			const randomColor = new THREE.Color(Math.random(), Math.random(), Math.random());
-			control.value = '#' + randomColor.getHexString();
+			control.value = `#${randomColor.getHexString()}`; // Use template literal
 			control.dispatchEvent(new Event("input", { bubbles: true })); // Trigger color change handler
 		}
 	}

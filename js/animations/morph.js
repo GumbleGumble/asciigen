@@ -28,16 +28,16 @@ function setupMorphAnimation() {
     console.log("Setting up Morph animation");
 
     // Use complexity slider value if available, otherwise default
-    let complexity = uiElements.morphComplexity ? Number.parseInt(uiElements.morphComplexity.value) : 32;
-    let geometries;
+    const complexity = uiElements.morphComplexity ? Number.parseInt(uiElements.morphComplexity.value) : 32; // Use const
+    let geometries; // Keep let here as it might be reassigned in catch block
     try {
         geometries = createMorphGeometries(complexity);
     } catch (error) {
         console.error("Error creating morph geometries:", error);
         // Fallback or error handling
-        complexity = 16; // Try lower complexity
-        geometries = createMorphGeometries(complexity);
-        if (uiElements.morphComplexity) uiElements.morphComplexity.value = complexity;
+        const fallbackComplexity = 16; // Use const for fallback value
+        geometries = createMorphGeometries(fallbackComplexity);
+        if (uiElements.morphComplexity) uiElements.morphComplexity.value = fallbackComplexity;
     }
 
     // Get initial color from picker
@@ -175,10 +175,10 @@ function updateMorphAnimation(deltaTime, elapsedTime) {
 
     } else {
         // Mid-transition: Apply scaling effect
-        const halfDuration = transitionDuration / 2.0;
+        const halfDuration = transitionDuration / 2.0; // Use const
         let scaleFactor = 1.0;
-        let currentGeomIndex = animationObjects.currentShapeIndex;
-        let targetGeomIndex = animationObjects.targetShapeIndex;
+        const currentGeomIndex = animationObjects.currentShapeIndex; // Use const
+        const targetGeomIndex = animationObjects.targetShapeIndex; // Use const
 
         if (progress < halfDuration) {
             // Scaling down the current shape (0.0 to halfDuration -> 1.0 to 0.0 scale)

@@ -259,7 +259,7 @@ function getCurrentLissajousParameters(elapsedTime) {
     const transition = animationObjects.transitionState;
 
     // Default to current slider values
-    let params = {
+    const params = { // Use const
         freqA: Number.parseFloat(lissajousControls.sliderA.value),
         freqB: Number.parseFloat(lissajousControls.sliderB.value),
         delta: Number.parseFloat(lissajousControls.sliderDelta.value),

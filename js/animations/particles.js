@@ -51,7 +51,9 @@ function resetParticle(
 
 	// Initial position based on emitter shape
 	let initialSpeedFactor = 0.1; // Base initial speed
-	let velX = 0, velY = 0, velZ = 0;
+	let velX = 0;
+    let velY = 0;
+    let velZ = 0;
 
 	if (emitterShape === "sphere") {
 		const phi = Math.acos(-1 + 2 * Math.random()); // Uniform point on sphere surface
