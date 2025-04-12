@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced ASCII Animator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Courier+Prime&display=swap" rel="stylesheet">
+</head>
+<body class="p-4 md:p-8">
+
+    <h1 class="text-3xl font-bold text-center mb-6 text-blue-300">Advanced ASCII Animator</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-1 space-y-4">
+            <div class="control-section">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">General Controls</h2>
+                <div>
+                    <label for="resolution-slider" class="slider-label">ASCII Resolution:</label>
+                    <input type="range" id="resolution-slider" name="resolution" min="30" max="150" value="80">
+                    <span class="text-sm text-gray-400">Cols: <span id="resolution-value">80</span></span>
+                </div>
+                <div>
+                    <label for="charset-select" class="slider-label">Character Set:</label>
+                    <select id="charset-select">
+                        <option value="dense">@%#*+=-:. </option>
+                        <option value="simple">#=-. </option>
+                        <option value="blocks">█▓▒░ </option>
+                        <option value="complex">$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,"^`'. </option>
+                        <option value="binary">10</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="brightness-slider" class="slider-label">Brightness Threshold:</label>
+                    <input type="range" id="brightness-slider" name="brightness" min="0" max="1" value="0.5" step="0.01">
+                </div>
+                <div>
+                    <label for="contrast-slider" class="slider-label">Contrast:</label>
+                    <input type="range" id="contrast-slider" name="contrast" min="0.1" max="5" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="zoom-slider" class="slider-label">Zoom:</label>
+                    <input type="range" id="zoom-slider" name="zoom" min="3" max="40" value="15" step="0.1">
+                </div>
+                <div class="mt-3">
+                    <input type="checkbox" id="invert-brightness-checkbox">
+                    <label for="invert-brightness-checkbox" class="inline-label slider-label">Invert Brightness</label>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button id="pause-play-button">Pause</button>
+                    <button id="randomize-button">Randomize</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Animation Type</h2>
+                <select id="animation-select">
+                    <option value="torus">Rotating Torus</option>
+                    <option value="noise">Noise Field</option>
+                    <option value="particles">Particle System</option>
+                    <option value="kaleidoscope">Kaleidoscope</option>
+                    <option value="morph">Shape Morphing</option>
+                    <option value="metaballs">Metaballs / Gooey Blobs</option>
+                    <option value="lissajous" selected>Lissajous Curves</option>
+                </select>
+            </div>
+
+            <div id="torus-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Torus Controls</h2>
+                <div>
+                    <label for="torus-speed-slider" class="slider-label">Rotation Speed:</label>
+                    <input type="range" id="torus-speed-slider" name="torus-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="torus-thickness-slider" class="slider-label">Thickness Ratio:</label>
+                    <input type="range" id="torus-thickness-slider" name="torus-thickness" min="0.1" max="0.9" value="0.3" step="0.05">
+                    <span class="text-sm text-gray-400"><span id="torus-thickness-value">0.3</span></span>
+                </div>
+            </div>
+
+            <div id="noise-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Noise Field Controls</h2>
+                <div>
+                    <label for="noise-scale-slider" class="slider-label">Noise Scale:</label>
+                    <input type="range" id="noise-scale-slider" name="noise-scale" min="0.5" max="10.0" value="4.0" step="0.5">
+                </div>
+                <div>
+                    <label for="noise-speed-slider" class="slider-label">Animation Speed:</label>
+                    <input type="range" id="noise-speed-slider" name="noise-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="noise-brightness-slider" class="slider-label">Brightness:</label>
+                    <input type="range" id="noise-brightness-slider" name="noise-brightness" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+            </div>
+
+            <div id="particles-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Particle System Controls</h2>
+                <div>
+                    <label for="particles-count-slider" class="slider-label">Particle Count:</label>
+                    <input type="range" id="particles-count-slider" name="particles-count" min="100" max="10000" value="1000" step="100">
+                    <span class="text-sm text-gray-400"><span id="particles-count-value">1000</span> particles</span>
+                </div>
+                <div>
+                    <label for="particles-size-slider" class="slider-label">Particle Size:</label>
+                    <input type="range" id="particles-size-slider" name="particles-size" min="0.1" max="2.0" value="0.5" step="0.1">
+                </div>
+                <div>
+                    <label for="particles-speed-slider" class="slider-label">Speed:</label>
+                    <input type="range" id="particles-speed-slider" name="particles-speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="particles-lifespan-slider" class="slider-label">Lifespan:</label>
+                    <input type="range" id="particles-lifespan-slider" name="particles-lifespan" min="1" max="10" value="3" step="0.5">
+                </div>
+                <div>
+                    <label for="particles-emitter-shape" class="slider-label">Emitter Shape:</label>
+                    <select id="particles-emitter-shape">
+                        <option value="box">Box</option>
+                        <option value="sphere">Sphere</option>
+                        <option value="point">Point</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="particles-emitter-size-slider" class="slider-label">Emitter Size:</label>
+                    <input type="range" id="particles-emitter-size-slider" name="particles-emitter-size" min="0.1" max="10.0" value="5.0" step="0.1">
+                </div>
+                <div>
+                    <label for="particles-force-type" class="slider-label">Force Type:</label>
+                    <select id="particles-force-type">
+                        <option value="none">None</option>
+                        <option value="gravity">Gravity</option>
+                        <option value="vortex">Vortex</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="particles-force-strength-slider" class="slider-label">Force Strength:</label>
+                    <input type="range" id="particles-force-strength-slider" name="particles-force-strength" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+            </div>
+
+            <div id="kaleidoscope-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Kaleidoscope Controls</h2>
+                <div>
+                    <label for="kaleidoscope-segments-slider" class="slider-label">Segments:</label>
+                    <input type="range" id="kaleidoscope-segments-slider" name="kal-segments" min="2" max="16" value="6" step="1">
+                    <span class="text-sm text-gray-400"><span id="kaleidoscope-segments-value">6</span> segments</span>
+                </div>
+                <div>
+                    <label for="kaleidoscope-noise-scale-slider" class="slider-label">Noise Scale:</label>
+                    <input type="range" id="kaleidoscope-noise-scale-slider" name="kal-noise-scale" min="0.5" max="10.0" value="4.0" step="0.5">
+                </div>
+                <div>
+                    <label for="kaleidoscope-noise-speed-slider" class="slider-label">Noise Speed:</label>
+                    <input type="range" id="kaleidoscope-noise-speed-slider" name="kal-noise-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="kaleidoscope-noise-brightness-slider" class="slider-label">Brightness:</label>
+                    <input type="range" id="kaleidoscope-noise-brightness-slider" name="kal-noise-brightness" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+            </div>
+
+            <div id="morph-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Shape Morphing Controls</h2>
+                <div>
+                    <label for="morph-speed-slider" class="slider-label">Morph Speed:</label>
+                    <input type="range" id="morph-speed-slider" name="morph-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="morph-rotation-slider" class="slider-label">Rotation Speed:</label>
+                    <input type="range" id="morph-rotation-slider" name="morph-rotation" min="0" max="3.0" value="1.0" step="0.1">
+                </div>
+            </div>
+
+            <div id="metaballs-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Metaballs Controls</h2>
+                <div>
+                    <label for="metaballs-count-slider" class="slider-label">Ball Count:</label>
+                    <input type="range" id="metaballs-count-slider" name="mb-count" min="3" max="25" value="8" step="1">
+                    <span class="text-sm text-gray-400"><span id="mb-count-value">8</span> balls</span>
+                </div>
+                <div>
+                    <label for="metaballs-size-slider" class="slider-label">Ball Size:</label>
+                    <input type="range" id="metaballs-size-slider" name="mb-size" min="0.2" max="3.0" value="1.2" step="0.1">
+                    <span class="text-sm text-gray-400"><span id="mb-size-value">1.2</span></span>
+                </div>
+                <div>
+                    <label for="metaballs-speed-slider" class="slider-label">Movement Speed:</label>
+                    <input type="range" id="metaballs-speed-slider" name="mb-speed" min="0.1" max="3.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="metaballs-threshold-slider" class="slider-label">Blend Threshold:</label>
+                    <input type="range" id="metaballs-threshold-slider" name="mb-threshold" min="0.3" max="2.0" value="1.0" step="0.05">
+                    <span class="text-sm text-gray-400"><span id="mb-threshold-value">1.0</span></span>
+                </div>
+                <div>
+                    <label for="metaballs-color-slider" class="slider-label">Color Blend:</label>
+                    <input type="range" id="metaballs-color-slider" name="mb-color" min="0" max="1" value="0.5" step="0.01">
+                </div>
+            </div>
+
+            <div id="lissajous-controls" class="control-section animation-controls">
+                <h2 class="text-xl font-semibold mb-3 text-gray-100">Lissajous Controls</h2>
+                <div>
+                    <label for="lissajous-a-slider" class="slider-label">Frequency A (X):</label>
+                    <input type="range" id="lissajous-a-slider" name="lj-a" min="1" max="12" value="3" step="1">
+                    <span class="text-sm text-gray-400"><span id="lj-a-value">3</span></span>
+                </div>
+                <div>
+                    <label for="lissajous-b-slider" class="slider-label">Frequency B (Y):</label>
+                    <input type="range" id="lissajous-b-slider" name="lj-b" min="1" max="12" value="2" step="1">
+                    <span class="text-sm text-gray-400"><span id="lj-b-value">2</span></span>
+                </div>
+                <div>
+                    <label for="lissajous-delta-slider" class="slider-label">Phase Shift (Delta):</label>
+                    <input type="range" id="lissajous-delta-slider" name="lj-delta" min="0" max="3.14159" value="1.57079" step="0.01">
+                    <span class="text-sm text-gray-400"><span id="lj-delta-value">PI/2</span> rad</span>
+                </div>
+                <div>
+                    <label for="lissajous-ampA-slider" class="slider-label">Amplitude A (X):</label>
+                    <input type="range" id="lissajous-ampA-slider" name="lj-ampA" min="0.5" max="5.0" value="3.0" step="0.1">
+                    <span class="text-sm text-gray-400"><span id="lj-ampA-value">3.0</span></span>
+                </div>
+                <div>
+                    <label for="lissajous-ampB-slider" class="slider-label">Amplitude B (Y):</label>
+                    <input type="range" id="lissajous-ampB-slider" name="lj-ampB" min="0.5" max="5.0" value="3.0" step="0.1">
+                    <span class="text-sm text-gray-400"><span id="lj-ampB-value">3.0</span></span>
+                </div>
+                <div>
+                    <label for="lissajous-speed-slider" class="slider-label">Drawing Speed:</label>
+                    <input type="range" id="lissajous-speed-slider" name="lj-speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+                <div>
+                    <label for="lissajous-points-slider" class="slider-label">Curve Points:</label>
+                    <input type="range" id="lissajous-points-slider" name="lj-points" min="100" max="5000" value="1000" step="50">
+                    <span class="text-sm text-gray-400"><span id="lj-points-value">1000</span> points</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="md:col-span-2">
+            <div id="ascii-output-container" class="relative">
+                <pre id="ascii-output">Loading ASCII Animation...</pre>
+                <canvas id="hidden-canvas" style="display: none;"></canvas>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 text-center">Animation is rendered using Three.js and converted to ASCII characters.</p>
+        </div>
+    </div>
+
+    <!-- Animation modules -->
+    <script src="js/animations/torus.js"></script>
+    <script src="js/animations/noise.js"></script>
+    <script src="js/animations/particles.js"></script>
+    <script src="js/animations/kaleidoscope.js"></script>
+    <script src="js/animations/morph.js"></script>
+    <script src="js/animations/metaballs.js"></script>
+    <script src="js/animations/lissajous.js"></script>
+    
+    <!-- Core animation functionality -->
+    <script src="js/main.js"></script>
+
+</body>
+</html>
