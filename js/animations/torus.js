@@ -22,18 +22,18 @@ function setupTorusAnimation() {
 	const roughness = Number.parseFloat(torusControls.sliderRoughness.value);
 	const metalness = Number.parseFloat(torusControls.sliderMetalness.value);
 
-	// Update UI labels
-	torusControls.valueThickness.textContent = thicknessRatio.toFixed(2);
-	if (uiElements.torusMajorRadiusValue)
-		uiElements.torusMajorRadiusValue.textContent = majorRadius.toFixed(1);
-	if (uiElements.torusRoughnessValue)
-		uiElements.torusRoughnessValue.textContent = roughness.toFixed(2);
-	if (uiElements.torusMetalnessValue)
-		uiElements.torusMetalnessValue.textContent = metalness.toFixed(2);
-	if (uiElements.torusSpeedValue)
-		uiElements.torusSpeedValue.textContent = Number.parseFloat(
-			torusControls.sliderSpeed.value,
-		).toFixed(2);
+	// Update UI labels - Handled by script.js updateAllValueDisplays
+	// torusControls.valueThickness.textContent = thicknessRatio.toFixed(2);
+	// if (uiElements.torusMajorRadiusValue)
+	// 	uiElements.torusMajorRadiusValue.textContent = majorRadius.toFixed(1);
+	// if (uiElements.torusRoughnessValue)
+	// 	uiElements.torusRoughnessValue.textContent = roughness.toFixed(2);
+	// if (uiElements.torusMetalnessValue)
+	// 	uiElements.torusMetalnessValue.textContent = metalness.toFixed(2);
+	// if (uiElements.torusSpeedValue)
+	// 	uiElements.torusSpeedValue.textContent = Number.parseFloat(
+	// 		torusControls.sliderSpeed.value,
+	// 	).toFixed(2);
 
 	// Create torus geometry with adjustable thickness and radius
 	// Parameters: radius, tube radius, radial segments, tubular segments
@@ -59,6 +59,9 @@ function setupTorusAnimation() {
 	animationObjects.material = material; // Store material reference
 
 	// Add event listeners (handled in script.js)
+
+    // Ensure initial labels are correct after setup
+    updateAllValueDisplays(); // Call global update to sync labels
 }
 
 function cleanupTorusAnimation() {
@@ -77,16 +80,16 @@ function cleanupTorusAnimation() {
 
 // Handles changes that require recreating the geometry
 function handleTorusGeometryChange() {
-	if (currentAnimation !== "torus" || !animationObjects.torus) return;
+	if (currentAnimationType !== "torus" || !animationObjects.torus) return; // Use currentAnimationType
 
 	// Get current parameters
 	const thicknessRatio = Number.parseFloat(torusControls.sliderThickness.value);
 	const majorRadius = Number.parseFloat(uiElements.torusMajorRadius.value);
 
-	// Update UI
-	torusControls.valueThickness.textContent = thicknessRatio.toFixed(2);
-	if (uiElements.torusMajorRadiusValue)
-		uiElements.torusMajorRadiusValue.textContent = majorRadius.toFixed(1);
+	// Update UI - Handled by script.js listener
+	// torusControls.valueThickness.textContent = thicknessRatio.toFixed(2);
+	// if (uiElements.torusMajorRadiusValue)
+	// 	uiElements.torusMajorRadiusValue.textContent = majorRadius.toFixed(1);
 
 	// Dispose old geometry
 	if (animationObjects.geometry) animationObjects.geometry.dispose();
@@ -114,16 +117,16 @@ function handleTorusMajorRadiusChange() {
 
 // Handles changes to material properties
 function handleTorusMaterialChange() {
-	if (currentAnimation !== "torus" || !animationObjects.material) return;
+	if (currentAnimationType !== "torus" || !animationObjects.material) return; // Use currentAnimationType
 
 	const roughness = Number.parseFloat(torusControls.sliderRoughness.value);
 	const metalness = Number.parseFloat(torusControls.sliderMetalness.value);
 
-	// Update UI
-	if (uiElements.torusRoughnessValue)
-		uiElements.torusRoughnessValue.textContent = roughness.toFixed(2);
-	if (uiElements.torusMetalnessValue)
-		uiElements.torusMetalnessValue.textContent = metalness.toFixed(2);
+	// Update UI - Handled by script.js listener
+	// if (uiElements.torusRoughnessValue)
+	// 	uiElements.torusRoughnessValue.textContent = roughness.toFixed(2);
+	// if (uiElements.torusMetalnessValue)
+	// 	uiElements.torusMetalnessValue.textContent = metalness.toFixed(2);
 
 	// Update material properties
 	animationObjects.material.roughness = roughness;
@@ -179,13 +182,17 @@ function randomizeTorusParameters() {
 			const step = Number.parseFloat(control.step) || (max - min) / 100;
 			const range = max - min;
 			const randomSteps = Math.floor(Math.random() * (range / step + 1));
-			control.value = min + randomSteps * step;
-			control.dispatchEvent(new Event("input", { bubbles: true }));
+            const precision = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+			control.value = (min + randomSteps * step).toFixed(precision);
+			// Dispatch event to trigger handlers (like geometry/material updates)
+            control.dispatchEvent(new Event("input", { bubbles: true }));
 		} else if (control.tagName === "SELECT") {
 			const randomIndex = Math.floor(Math.random() * control.options.length);
 			control.selectedIndex = randomIndex;
+            // Dispatch event to trigger handlers if any
 			control.dispatchEvent(new Event("change", { bubbles: true }));
 		}
 	}
-	// Geometry and material changes are handled by the 'input'/'change' event handlers
+	// Geometry and material changes are handled by the 'input'/'change' event handlers triggered above
+    // UI label updates are also handled by the listeners triggered by the events.
 }

@@ -113,18 +113,18 @@ function handleKaleidoscopeParamChange() {
 
     const segments = Number.parseFloat(kaleidoscopeControls.sliderSegments.value);
     const noiseScale = Number.parseFloat(kaleidoscopeControls.sliderNoiseScale.value);
-    const noiseSpeed = Number.parseFloat(kaleidoscopeControls.sliderNoiseSpeed.value);
+    const noiseSpeed = Number.parseFloat(kaleidoscopeControls.sliderNoiseSpeed.value); // Keep reading speed here for update loop access if needed
     const noiseBrightness = Number.parseFloat(kaleidoscopeControls.sliderNoiseBrightness.value);
 
     animationObjects.material.uniforms.u_segments.value = segments;
     animationObjects.material.uniforms.u_noise_scale.value = noiseScale;
-    animationObjects.material.uniforms.u_noise_speed.value = noiseSpeed; // Store speed for update loop
+    // animationObjects.material.uniforms.u_noise_speed.value = noiseSpeed; // Speed is read in update loop
     animationObjects.material.uniforms.u_noise_brightness.value = noiseBrightness;
 
-    // Update UI labels (already done in script.js listener)
-	if (uiElements.kaleidoscopeNoiseBrightnessValue)
-		uiElements.kaleidoscopeNoiseBrightnessValue.textContent =
-			brightness.toFixed(1);
+    // Update UI labels (Handled by script.js listener triggering this function AND updating labels)
+	// if (uiElements.kaleidoscopeNoiseBrightnessValue)
+	// 	uiElements.kaleidoscopeNoiseBrightnessValue.textContent =
+	// 		brightness.toFixed(1); // REMOVE THIS LINE
 }
 
 // Animation update function for Kaleidoscope

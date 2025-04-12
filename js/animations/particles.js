@@ -1,4 +1,4 @@
-s// Particle System Animation Module
+// Particle System Animation Module
 
 // Ensure SimplexNoise is loaded (e.g., via script tag in index.html)
 const SimplexNoise = window.SimplexNoise;
@@ -100,22 +100,9 @@ function setupParticleAnimation() {
 	);
 	const lifespan = Number.parseFloat(particlesControls.sliderLifespan.value);
 
-	// Update display values
-	particlesControls.valueCount.textContent = particleCount;
-	if (uiElements.particleSizeValue)
-		uiElements.particleSizeValue.textContent = particleSize.toFixed(1);
-	if (uiElements.particleSpeedValue)
-		uiElements.particleSpeedValue.textContent = Number.parseFloat(
-			particlesControls.sliderSpeed.value,
-		).toFixed(1);
-	if (uiElements.particleLifespanValue)
-		uiElements.particleLifespanValue.textContent = lifespan.toFixed(1);
-	if (uiElements.particleEmitterSizeValue)
-		uiElements.particleEmitterSizeValue.textContent = emitterSize.toFixed(1);
-	if (uiElements.particleForceStrengthValue)
-		uiElements.particleForceStrengthValue.textContent = Number.parseFloat(
-			particlesControls.sliderForceStrength.value,
-		).toFixed(1);
+	// Update display values - Handled by script.js updateAllValueDisplays
+	// particlesControls.valueCount.textContent = particleCount;
+	// if (uiElements.particleSizeValue) ... etc ...
 
 	// Create particle geometry - simple points
 	const particlesGeometry = new THREE.BufferGeometry();
@@ -177,6 +164,9 @@ function setupParticleAnimation() {
 	animationObjects.emitterSize = emitterSize; // Store current emitter size
 	animationObjects.particleCount = particleCount; // Store current count
 	animationObjects.maxLifespan = lifespan; // Store current max lifespan
+
+    // Ensure initial labels are correct after setup
+    updateAllValueDisplays(); // Call global update to sync labels
 }
 
 function cleanupParticleAnimation() {
@@ -218,8 +208,8 @@ function handleParticleParamChange() {
 	// Update material size
 	const size = Number.parseFloat(particlesControls.sliderSize.value);
 	animationObjects.particlesMaterial.size = size;
-	if (uiElements.particleSizeValue)
-		uiElements.particleSizeValue.textContent = size.toFixed(1);
+	// if (uiElements.particleSizeValue) // UI Update handled by script.js listener
+	// 	uiElements.particleSizeValue.textContent = size.toFixed(1);
 
     // Update max lifespan if it changed (will affect new particles)
     const newMaxLifespan = Number.parseFloat(particlesControls.sliderLifespan.value);
@@ -229,6 +219,7 @@ function handleParticleParamChange() {
     }
 
     // Other parameters like speed, force type, strength are read directly in update loop
+    // UI label updates are handled by the main script's event listeners
 }
 
 function handleParticleEmitterChange() {
@@ -432,14 +423,16 @@ function randomizeParticleParameters() {
 		const step = Number.parseFloat(slider.step) || (max - min) / 100;
 		const range = max - min;
 		const randomSteps = Math.floor(Math.random() * (range / step + 1));
-		const newValue = (min + randomSteps * step).toFixed(step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
+		// Calculate the actual value based on steps
+        const precision = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+		const newValue = (min + randomSteps * step).toFixed(precision);
 
 		// Check if count changed significantly
 		if (slider === particlesControls.sliderCount && slider.value !== newValue) {
 			needsRestart = true;
 		}
-		slider.value = newValue;
-        // No need to dispatch 'input' here, handled by updateAllValueDisplays or restart
+		slider.value = newValue; // Set the value directly
+        // Don't dispatch events here; handle updates after setting all values
 	}
 
 	// Randomize selects
@@ -456,8 +449,8 @@ function randomizeParticleParameters() {
 			if (select === particlesControls.selectEmitterShape) {
 				needsRestart = true;
 			}
-			select.selectedIndex = randomIndex;
-            // No need to dispatch 'change' here, handled by updateAllValueDisplays or restart
+			select.selectedIndex = randomIndex; // Set the value directly
+            // Don't dispatch events here
 		}
 	}
 
@@ -467,12 +460,11 @@ function randomizeParticleParameters() {
 			"Restarting particles due to randomized count or emitter change.",
 		);
 		cleanupParticleAnimation();
-		setupParticleAnimation(); // This also updates labels via its internal logic
-        updateAllValueDisplays(); // Ensure all other labels are updated too
+		setupParticleAnimation(); // This calls updateAllValueDisplays internally at the end
 	} else {
 		// Update labels for sliders/selects that didn't cause a restart
 		updateAllValueDisplays(); // Call the global update function from script.js
-		// Update particle size if it changed (handled by handleParticleParamChange called via updateAllValueDisplays)
-        // handleParticleParamChange(); // Called indirectly
+		// Update particle size/lifespan if it changed (handled by handleParticleParamChange called via updateAllValueDisplays)
+        handleParticleParamChange(); // Explicitly call handler for non-restarting changes
 	}
 }

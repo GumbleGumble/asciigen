@@ -1,4 +1,4 @@
-import * as THREE from "three"; // Assuming THREE is available globally or via import
+// import * as THREE from "three"; // Remove this line - THREE is global
 
 // --- Global Variables ---
 let scene; // Declare variables separately
@@ -255,16 +255,25 @@ function init() {
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0x000000); // Black background
 	clock = new THREE.Clock();
+    console.log("Scene and Clock created.");
 
 	// Camera Setup (Perspective)
 	const aspect = 16 / 9; // Initial aspect ratio, will be updated
 	camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
 	camera.position.z = Number.parseFloat(uiElements.zoom.value) || 15; // Initial zoom from slider
+    console.log("Camera created.");
 
 	// Renderer Setup
-	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-	renderer.setSize(512, 512); // Fixed internal size, adjust if needed
-	renderer.setPixelRatio(window.devicePixelRatio);
+	try {
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(512, 512); // Fixed internal size, adjust if needed
+        renderer.setPixelRatio(window.devicePixelRatio);
+        console.log("Renderer created.");
+    } catch (error) {
+        console.error("Error creating WebGLRenderer:", error);
+        alert("Failed to initialize WebGL. Please ensure your browser supports it.");
+        return; // Stop initialization if renderer fails
+    }
 	// Don't add renderer.domElement to the document body
 
 	// Initial Render Target and Downscale Canvas Setup
@@ -272,6 +281,7 @@ function init() {
 
 	// Event Listeners
 	setupEventListeners();
+    console.log("Event listeners set up.");
 
 	// Initial UI Update
 	updateAllValueDisplays();
@@ -279,9 +289,12 @@ function init() {
 	asciiChars =
 		ASCII_CHARS_MAP[uiElements.charset.value] || ASCII_CHARS_MAP.dense;
 	updateUIForAnimationType(currentAnimationType);
+    console.log("Initial UI updated.");
 
 	// Start
 	switchAnimation(currentAnimationType); // Switch to the default selected animation
+    console.log("Initial animation switched.");
+    console.log("init finished, starting animation loop...");
 	animate();
 }
 
@@ -289,31 +302,25 @@ function init() {
 function setupEventListeners() {
 	// General Controls
 	uiElements.resolution.addEventListener("input", () => {
-		uiElements.resolutionValue.textContent = uiElements.resolution.value;
+		// uiElements.resolutionValue.textContent = uiElements.resolution.value; // Handled by updateAllValueDisplays
 		setupRenderTargetAndCanvas(); // ASCII grid size depends on this
 	});
 	uiElements.charset.addEventListener("change", (e) => {
 		asciiChars = ASCII_CHARS_MAP[e.target.value] || ASCII_CHARS_MAP.dense;
 	});
 	uiElements.brightness.addEventListener("input", (e) => {
-		uiElements.brightnessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+		// uiElements.brightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 	});
 	uiElements.contrast.addEventListener("input", (e) => {
-		uiElements.contrastValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+		// uiElements.contrastValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 	});
 	uiElements.zoom.addEventListener("input", (e) => {
 		const zoomVal = Number.parseFloat(e.target.value);
-		uiElements.zoomValue.textContent = zoomVal.toFixed(1);
+		// uiElements.zoomValue.textContent = zoomVal.toFixed(1); // Handled by updateAllValueDisplays
 		if (camera) camera.position.z = zoomVal;
 	});
 	uiElements.renderTargetResolution.addEventListener("input", (e) => {
-		uiElements.renderTargetResolutionValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+		// uiElements.renderTargetResolutionValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		setupRenderTargetAndCanvas(); // Render target size depends on this
 	});
 	// Invert checkbox has no value display, just checked state
@@ -330,14 +337,14 @@ function setupEventListeners() {
 	// Lighting Controls
 	uiElements.ambientIntensity.addEventListener("input", (e) => {
 		const intensity = Number.parseFloat(e.target.value);
-		uiElements.ambientIntensityValue.textContent = intensity.toFixed(2);
+		// uiElements.ambientIntensityValue.textContent = intensity.toFixed(2); // Handled by updateAllValueDisplays
 		if (animationObjects.ambientLight) {
 			animationObjects.ambientLight.intensity = intensity;
 		}
 	});
 	uiElements.directionalIntensity.addEventListener("input", (e) => {
 		const intensity = Number.parseFloat(e.target.value);
-		uiElements.directionalIntensityValue.textContent = intensity.toFixed(1);
+		// uiElements.directionalIntensityValue.textContent = intensity.toFixed(1); // Handled by updateAllValueDisplays
 		if (animationObjects.directionalLight) {
 			animationObjects.directionalLight.intensity = intensity;
 		}
@@ -349,13 +356,14 @@ function setupEventListeners() {
 	];
 	// Use for...of loop
 	for (const slider of lightPosSliders) {
+        if (!slider) continue; // Add check
 		slider.addEventListener("input", () => {
 			const x = Number.parseFloat(uiElements.lightPosX.value);
 			const y = Number.parseFloat(uiElements.lightPosY.value);
 			const z = Number.parseFloat(uiElements.lightPosZ.value);
-			uiElements.lightPosXValue.textContent = x.toFixed(1);
-			uiElements.lightPosYValue.textContent = y.toFixed(1);
-			uiElements.lightPosZValue.textContent = z.toFixed(1);
+			// uiElements.lightPosXValue.textContent = x.toFixed(1); // Handled by updateAllValueDisplays
+			// uiElements.lightPosYValue.textContent = y.toFixed(1); // Handled by updateAllValueDisplays
+			// uiElements.lightPosZValue.textContent = z.toFixed(1); // Handled by updateAllValueDisplays
 			if (animationObjects.directionalLight) {
 				animationObjects.directionalLight.position.set(x, y, z);
 			}
@@ -363,191 +371,163 @@ function setupEventListeners() {
 	}
 
 	// --- Add listeners for Animation Specific Controls ---
-	// These listeners often call the handle...Change function within the respective module
-	// or update UI elements directly. Modules might add their own listeners too.
+	// These listeners call the module handlers. UI updates are triggered
+    // by updateAllValueDisplays called from the listener itself or the handler.
 
 	// Torus
-	uiElements.torusSpeed.addEventListener("input", (e) => {
-		uiElements.torusSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
-		// Speed is read directly in updateTorusAnimation
-		window.TORUS_ANIMATION?.handleSpeedChange?.(); // Call module handler if exists
+    if (uiElements.torusSpeed) uiElements.torusSpeed.addEventListener("input", (e) => {
+		// uiElements.torusSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
+		window.TORUS_ANIMATION?.handleSpeedChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.torusThickness.addEventListener("input", (e) => {
-		uiElements.torusThicknessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+	if (uiElements.torusThickness) uiElements.torusThickness.addEventListener("input", (e) => {
+		// uiElements.torusThicknessValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		window.TORUS_ANIMATION?.handleThicknessChange?.(); // Trigger recreation
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.torusMajorRadius.addEventListener("input", (e) => {
-		uiElements.torusMajorRadiusValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.torusMajorRadius) uiElements.torusMajorRadius.addEventListener("input", (e) => {
+		// uiElements.torusMajorRadiusValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.TORUS_ANIMATION?.handleMajorRadiusChange?.(); // Trigger recreation
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.torusRoughness.addEventListener("input", (e) => { // Added
-		uiElements.torusRoughnessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+	if (uiElements.torusRoughness) uiElements.torusRoughness.addEventListener("input", (e) => { // Added
+		// uiElements.torusRoughnessValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		window.TORUS_ANIMATION?.handleMaterialChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.torusMetalness.addEventListener("input", (e) => { // Added
-		uiElements.torusMetalnessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+	if (uiElements.torusMetalness) uiElements.torusMetalness.addEventListener("input", (e) => { // Added
+		// uiElements.torusMetalnessValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		window.TORUS_ANIMATION?.handleMaterialChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.torusRotationAxis.addEventListener("change", () => {
-		// Axis is read directly in updateTorusAnimation
-		window.TORUS_ANIMATION?.handleRotationAxisChange?.(); // Call module handler if exists
+	if (uiElements.torusRotationAxis) uiElements.torusRotationAxis.addEventListener("change", () => {
+		window.TORUS_ANIMATION?.handleRotationAxisChange?.();
+        // No label to update directly for select
 	});
 
 	// Noise
-	uiElements.noiseScale.addEventListener("input", (e) => {
-		uiElements.noiseScaleValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.noiseScale) uiElements.noiseScale.addEventListener("input", (e) => {
+		// uiElements.noiseScaleValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.NOISE_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.noiseSpeed.addEventListener("input", (e) => {
-		uiElements.noiseSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Speed is read directly in updateNoiseAnimation
+	if (uiElements.noiseSpeed) uiElements.noiseSpeed.addEventListener("input", (e) => {
+		// uiElements.noiseSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.NOISE_ANIMATION?.handleParamChange?.(); // Update uniform via handler
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.noiseBrightness.addEventListener("input", (e) => {
-		uiElements.noiseBrightnessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.noiseBrightness) uiElements.noiseBrightness.addEventListener("input", (e) => {
+		// uiElements.noiseBrightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.NOISE_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
 
 	// Particles
-	uiElements.particleCount.addEventListener("input", (e) => {
-		uiElements.particleCountValue.textContent = e.target.value;
-		// Debounce or handle potential performance hit? For now, direct call.
+	if (uiElements.particleCount) uiElements.particleCount.addEventListener("input", (e) => {
+		// uiElements.particleCountValue.textContent = e.target.value; // Handled by updateAllValueDisplays
 		window.PARTICLES_ANIMATION?.handleCountChange?.(); // Trigger recreation
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.particleSize.addEventListener("input", (e) => {
-		uiElements.particleSizeValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.particleSize) uiElements.particleSize.addEventListener("input", (e) => {
+		// uiElements.particleSizeValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.PARTICLES_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.particleSpeed.addEventListener("input", (e) => {
-		uiElements.particleSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Speed read in update loop
-		window.PARTICLES_ANIMATION?.handleParamChange?.(); // Call handler if exists
+	if (uiElements.particleSpeed) uiElements.particleSpeed.addEventListener("input", (e) => {
+		// uiElements.particleSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
+		window.PARTICLES_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.particleLifespan.addEventListener("input", (e) => {
-		uiElements.particleLifespanValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Lifespan read in update loop
-		window.PARTICLES_ANIMATION?.handleParamChange?.(); // Call handler if exists
+	if (uiElements.particleLifespan) uiElements.particleLifespan.addEventListener("input", (e) => {
+		// uiElements.particleLifespanValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
+		window.PARTICLES_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.particleEmitterShape.addEventListener("change", () => {
-		// Shape read in update loop for resetting particles
+	if (uiElements.particleEmitterShape) uiElements.particleEmitterShape.addEventListener("change", () => {
 		window.PARTICLES_ANIMATION?.handleEmitterChange?.(); // Trigger recreation
+        // No label to update
 	});
-	uiElements.particleEmitterSize.addEventListener("input", (e) => {
-		uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Size read in update loop
+	if (uiElements.particleEmitterSize) uiElements.particleEmitterSize.addEventListener("input", (e) => {
+		// uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.PARTICLES_ANIMATION?.handleEmitterChange?.(); // Trigger recreation
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.particleForceType.addEventListener("change", () => {
-		// Force type read in update loop
-		window.PARTICLES_ANIMATION?.handleParamChange?.(); // Call handler if exists
+	if (uiElements.particleForceType) uiElements.particleForceType.addEventListener("change", () => {
+		window.PARTICLES_ANIMATION?.handleParamChange?.();
+        // No label to update
 	});
-	uiElements.particleForceStrength.addEventListener("input", (e) => {
-		uiElements.particleForceStrengthValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Force strength read in update loop
-		window.PARTICLES_ANIMATION?.handleParamChange?.(); // Call handler if exists
+	if (uiElements.particleForceStrength) uiElements.particleForceStrength.addEventListener("input", (e) => {
+		// uiElements.particleForceStrengthValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
+		window.PARTICLES_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
 
 	// Kaleidoscope
-	uiElements.kaleidoscopeSegments.addEventListener("input", (e) => {
-		uiElements.kaleidoscopeSegmentsValue.textContent = e.target.value;
+	if (uiElements.kaleidoscopeSegments) uiElements.kaleidoscopeSegments.addEventListener("input", (e) => {
+		// uiElements.kaleidoscopeSegmentsValue.textContent = e.target.value; // Handled by updateAllValueDisplays
 		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.kaleidoscopeNoiseScale.addEventListener("input", (e) => {
-		uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.kaleidoscopeNoiseScale) uiElements.kaleidoscopeNoiseScale.addEventListener("input", (e) => {
+		// uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.kaleidoscopeNoiseSpeed.addEventListener("input", (e) => {
-		uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Speed is used in update loop via uniform
+	if (uiElements.kaleidoscopeNoiseSpeed) uiElements.kaleidoscopeNoiseSpeed.addEventListener("input", (e) => {
+		// uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.(); // Update uniform
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.kaleidoscopeNoiseBrightness.addEventListener("input", (e) => {
-		uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.kaleidoscopeNoiseBrightness) uiElements.kaleidoscopeNoiseBrightness.addEventListener("input", (e) => {
+		// uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.KALEIDOSCOPE_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
 
 	// Morph
-	uiElements.morphSpeed.addEventListener("input", (e) => {
-		uiElements.morphSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Speed read in update loop
-		window.MORPH_ANIMATION?.handleSpeedChange?.(); // Call handler if exists
+	if (uiElements.morphSpeed) uiElements.morphSpeed.addEventListener("input", (e) => {
+		// uiElements.morphSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
+		window.MORPH_ANIMATION?.handleSpeedChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.morphRotationSpeed.addEventListener("input", (e) => {
-		uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
-		// Speed read in update loop
-		window.MORPH_ANIMATION?.handleRotationSpeedChange?.(); // Call handler if exists
+	if (uiElements.morphRotationSpeed) uiElements.morphRotationSpeed.addEventListener("input", (e) => {
+		// uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
+		window.MORPH_ANIMATION?.handleRotationSpeedChange?.();
+        updateAllValueDisplays(); // Update label
 	});
 	if (uiElements.morphComplexity) { // If complexity slider exists
 	    uiElements.morphComplexity.addEventListener('input', (e) => {
-	        uiElements.morphComplexityValue.textContent = e.target.value;
+	        // uiElements.morphComplexityValue.textContent = e.target.value; // Handled by updateAllValueDisplays
 	        window.MORPH_ANIMATION?.handleComplexityChange?.(); // Trigger recreation
+            updateAllValueDisplays(); // Update label
 	    });
 	}
 
 	// Metaballs
-	uiElements.metaballsCount.addEventListener("input", (e) => {
-		uiElements.metaballsCountValue.textContent = e.target.value;
+	if (uiElements.metaballsCount) uiElements.metaballsCount.addEventListener("input", (e) => {
+		// uiElements.metaballsCountValue.textContent = e.target.value; // Handled by updateAllValueDisplays
 		window.METABALLS_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.metaballsSize.addEventListener("input", (e) => {
-		uiElements.metaballsSizeValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.metaballsSize) uiElements.metaballsSize.addEventListener("input", (e) => {
+		// uiElements.metaballsSizeValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.METABALLS_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.metaballsSpeed.addEventListener("input", (e) => {
-		uiElements.metaballsSpeedValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(1);
+	if (uiElements.metaballsSpeed) uiElements.metaballsSpeed.addEventListener("input", (e) => {
+		// uiElements.metaballsSpeedValue.textContent = Number.parseFloat(e.target.value).toFixed(1); // Handled by updateAllValueDisplays
 		window.METABALLS_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.metaballsThreshold.addEventListener("input", (e) => {
-		uiElements.metaballsThresholdValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+	if (uiElements.metaballsThreshold) uiElements.metaballsThreshold.addEventListener("input", (e) => {
+		// uiElements.metaballsThresholdValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		window.METABALLS_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
-	uiElements.metaballsColor.addEventListener("input", (e) => {
-		uiElements.metaballsColorValue.textContent = Number.parseFloat(
-			e.target.value,
-		).toFixed(2);
+	if (uiElements.metaballsColor) uiElements.metaballsColor.addEventListener("input", (e) => {
+		// uiElements.metaballsColorValue.textContent = Number.parseFloat(e.target.value).toFixed(2); // Handled by updateAllValueDisplays
 		window.METABALLS_ANIMATION?.handleParamChange?.();
+        updateAllValueDisplays(); // Update label
 	});
 
 	// Lissajous
@@ -562,9 +542,11 @@ function setupEventListeners() {
 	];
 	// Use for...of loop
 	for (const slider of lissajousSliders) {
+        if (!slider) continue; // Add check
 		slider.addEventListener("input", () => {
 			// Update labels (handled by module's handleLissajousParamChange)
 			window.LISSAJOUS_ANIMATION?.handleParamChange?.();
+            // No need to call updateAllValueDisplays here, module handler updates its own labels
 		});
 	}
 
@@ -593,10 +575,11 @@ function setupEventListeners() {
 
 // --- Canvas and Render Target Setup ---
 function setupRenderTargetAndCanvas() {
+    console.log("setupRenderTargetAndCanvas called.");
 	const display = uiElements.display;
 	const container = uiElements.displayContainer;
 	if (!container || !display) {
-		console.error("Display elements not found!");
+		console.error("Display elements not found! Cannot setup render target.");
 		return;
 	}
 
@@ -604,11 +587,11 @@ function setupRenderTargetAndCanvas() {
 	const containerHeight = container.clientHeight;
 
 	if (containerWidth <= 0 || containerHeight <= 0) {
-		// console.warn("Container dimensions not available yet, deferring setup."); // Reduce noise
+		console.warn("Container dimensions not available yet, deferring setup."); // Keep this warning
 		requestAnimationFrame(setupRenderTargetAndCanvas); // Try again
 		return;
 	}
-    // console.log(`Container dimensions: ${containerWidth}x${containerHeight}`); // Log dimensions
+    console.log(`Container dimensions: ${containerWidth}x${containerHeight}`); // Log dimensions *after* check
 
 	// 1. Determine ASCII Grid Size (based on resolution slider and container aspect ratio)
 	const asciiWidth = Number.parseInt(uiElements.resolution.value, 10); // Use radix 10
@@ -619,7 +602,7 @@ function setupRenderTargetAndCanvas() {
 			(containerHeight / containerWidth) * asciiWidth * charAspectRatio,
 		),
 	);
-    // console.log(`Calculated ASCII grid: ${asciiWidth}x${calculatedHeight}`); // Log grid size
+    console.log(`Calculated ASCII grid: ${asciiWidth}x${calculatedHeight}`); // Log grid size
 
 	// 2. Determine Render Target Size (based on ASCII grid and scale factor)
 	const renderScale = Number.parseFloat(
@@ -631,13 +614,18 @@ function setupRenderTargetAndCanvas() {
 	// 3. Setup Render Target
 	if (!renderTarget || renderTarget.width !== renderWidth || renderTarget.height !== renderHeight) {
 		if (renderTarget) renderTarget.dispose(); // Dispose old one if exists
-		renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
-			minFilter: THREE.LinearFilter,
-			magFilter: THREE.NearestFilter,
-			format: THREE.RGBAFormat,
-			type: THREE.UnsignedByteType, // Use UnsignedByteType for readRenderTargetPixels
-		});
-		console.log(`Render Target resized to: ${renderWidth}x${renderHeight}`);
+        try {
+            renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.NearestFilter,
+                format: THREE.RGBAFormat,
+                type: THREE.UnsignedByteType, // Use UnsignedByteType for readRenderTargetPixels
+            });
+            console.log(`Render Target resized/created: ${renderWidth}x${renderHeight}`);
+        } catch (error) {
+            console.error("Error creating WebGLRenderTarget:", error);
+            return; // Stop if render target fails
+        }
 	}
 
 	// 4. Setup Downscale Canvas (matches ASCII grid size)
@@ -646,6 +634,7 @@ function setupRenderTargetAndCanvas() {
 		downscaleCtx = downscaleCanvas.getContext("2d", {
 			willReadFrequently: true,
 		});
+        console.log("Downscale canvas created.");
 	}
 	// Resize downscale canvas if needed
 	if (downscaleCanvas.width !== asciiWidth || downscaleCanvas.height !== calculatedHeight) {
@@ -669,32 +658,79 @@ function setupRenderTargetAndCanvas() {
 
 	// Apply the calculated font size (with a minimum size)
 	display.style.fontSize = `${Math.max(1, targetFontSize)}px`; // Ensure font size is at least 1px
-    // console.log(`Font size set to: ${display.style.fontSize}`); // Log font size
+    console.log(`Font size set to: ${display.style.fontSize}`); // Log font size
 
     // Update camera aspect ratio based on container dimensions
     if (camera) {
         camera.aspect = containerWidth / containerHeight;
         camera.updateProjectionMatrix();
+        console.log("Camera aspect ratio updated.");
     }
+    console.log("setupRenderTargetAndCanvas finished.");
 }
 
 // --- UI Update Functions ---
 function updateAllValueDisplays() {
-	// Trigger 'input' or 'change' event on all sliders/selects/checkboxes
-	// to update their corresponding value spans using the existing listeners.
-	// Use for...of loop
-	for (const control of document.querySelectorAll(
-		'input[type="range"], select, input[type="checkbox"]',
-	)) {
-		const eventType =
-			control.type === "checkbox" || control.tagName === "SELECT"
-				? "change"
-				: "input";
-		control.dispatchEvent(new Event(eventType, { bubbles: true }));
-	}
-	console.log("Initial UI values updated.");
+    // Update labels for all relevant controls based on their current value
+    // General
+    if (uiElements.resolutionValue && uiElements.resolution) uiElements.resolutionValue.textContent = uiElements.resolution.value;
+    if (uiElements.brightnessValue && uiElements.brightness) uiElements.brightnessValue.textContent = Number.parseFloat(uiElements.brightness.value).toFixed(2);
+    if (uiElements.contrastValue && uiElements.contrast) uiElements.contrastValue.textContent = Number.parseFloat(uiElements.contrast.value).toFixed(1);
+    if (uiElements.zoomValue && uiElements.zoom) uiElements.zoomValue.textContent = Number.parseFloat(uiElements.zoom.value).toFixed(1);
+    if (uiElements.renderTargetResolutionValue && uiElements.renderTargetResolution) uiElements.renderTargetResolutionValue.textContent = Number.parseFloat(uiElements.renderTargetResolution.value).toFixed(2);
+
+    // Lighting
+    if (uiElements.ambientIntensityValue && uiElements.ambientIntensity) uiElements.ambientIntensityValue.textContent = Number.parseFloat(uiElements.ambientIntensity.value).toFixed(2);
+    if (uiElements.directionalIntensityValue && uiElements.directionalIntensity) uiElements.directionalIntensityValue.textContent = Number.parseFloat(uiElements.directionalIntensity.value).toFixed(1);
+    if (uiElements.lightPosXValue && uiElements.lightPosX) uiElements.lightPosXValue.textContent = Number.parseFloat(uiElements.lightPosX.value).toFixed(1);
+    if (uiElements.lightPosYValue && uiElements.lightPosY) uiElements.lightPosYValue.textContent = Number.parseFloat(uiElements.lightPosY.value).toFixed(1);
+    if (uiElements.lightPosZValue && uiElements.lightPosZ) uiElements.lightPosZValue.textContent = Number.parseFloat(uiElements.lightPosZ.value).toFixed(1);
+
+    // Torus
+    if (uiElements.torusSpeedValue && uiElements.torusSpeed) uiElements.torusSpeedValue.textContent = Number.parseFloat(uiElements.torusSpeed.value).toFixed(2);
+    if (uiElements.torusThicknessValue && uiElements.torusThickness) uiElements.torusThicknessValue.textContent = Number.parseFloat(uiElements.torusThickness.value).toFixed(2);
+    if (uiElements.torusMajorRadiusValue && uiElements.torusMajorRadius) uiElements.torusMajorRadiusValue.textContent = Number.parseFloat(uiElements.torusMajorRadius.value).toFixed(1);
+    if (uiElements.torusRoughnessValue && uiElements.torusRoughness) uiElements.torusRoughnessValue.textContent = Number.parseFloat(uiElements.torusRoughness.value).toFixed(2);
+    if (uiElements.torusMetalnessValue && uiElements.torusMetalness) uiElements.torusMetalnessValue.textContent = Number.parseFloat(uiElements.torusMetalness.value).toFixed(2);
+
+    // Noise
+    if (uiElements.noiseScaleValue && uiElements.noiseScale) uiElements.noiseScaleValue.textContent = Number.parseFloat(uiElements.noiseScale.value).toFixed(1);
+    if (uiElements.noiseSpeedValue && uiElements.noiseSpeed) uiElements.noiseSpeedValue.textContent = Number.parseFloat(uiElements.noiseSpeed.value).toFixed(1);
+    if (uiElements.noiseBrightnessValue && uiElements.noiseBrightness) uiElements.noiseBrightnessValue.textContent = Number.parseFloat(uiElements.noiseBrightness.value).toFixed(1);
+
+    // Particles
+    if (uiElements.particleCountValue && uiElements.particleCount) uiElements.particleCountValue.textContent = uiElements.particleCount.value;
+    if (uiElements.particleSizeValue && uiElements.particleSize) uiElements.particleSizeValue.textContent = Number.parseFloat(uiElements.particleSize.value).toFixed(1);
+    if (uiElements.particleSpeedValue && uiElements.particleSpeed) uiElements.particleSpeedValue.textContent = Number.parseFloat(uiElements.particleSpeed.value).toFixed(1);
+    if (uiElements.particleLifespanValue && uiElements.particleLifespan) uiElements.particleLifespanValue.textContent = Number.parseFloat(uiElements.particleLifespan.value).toFixed(1);
+    if (uiElements.particleEmitterSizeValue && uiElements.particleEmitterSize) uiElements.particleEmitterSizeValue.textContent = Number.parseFloat(uiElements.particleEmitterSize.value).toFixed(1);
+    if (uiElements.particleForceStrengthValue && uiElements.particleForceStrength) uiElements.particleForceStrengthValue.textContent = Number.parseFloat(uiElements.particleForceStrength.value).toFixed(1);
+
+    // Kaleidoscope
+    if (uiElements.kaleidoscopeSegmentsValue && uiElements.kaleidoscopeSegments) uiElements.kaleidoscopeSegmentsValue.textContent = uiElements.kaleidoscopeSegments.value;
+    if (uiElements.kaleidoscopeNoiseScaleValue && uiElements.kaleidoscopeNoiseScale) uiElements.kaleidoscopeNoiseScaleValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseScale.value).toFixed(1);
+    if (uiElements.kaleidoscopeNoiseSpeedValue && uiElements.kaleidoscopeNoiseSpeed) uiElements.kaleidoscopeNoiseSpeedValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseSpeed.value).toFixed(1);
+    if (uiElements.kaleidoscopeNoiseBrightnessValue && uiElements.kaleidoscopeNoiseBrightness) uiElements.kaleidoscopeNoiseBrightnessValue.textContent = Number.parseFloat(uiElements.kaleidoscopeNoiseBrightness.value).toFixed(1);
+
+    // Morph
+    if (uiElements.morphSpeedValue && uiElements.morphSpeed) uiElements.morphSpeedValue.textContent = Number.parseFloat(uiElements.morphSpeed.value).toFixed(1);
+    if (uiElements.morphRotationSpeedValue && uiElements.morphRotationSpeed) uiElements.morphRotationSpeedValue.textContent = Number.parseFloat(uiElements.morphRotationSpeed.value).toFixed(1);
+    if (uiElements.morphComplexityValue && uiElements.morphComplexity) uiElements.morphComplexityValue.textContent = uiElements.morphComplexity.value;
+
+    // Metaballs
+    if (uiElements.metaballsCountValue && uiElements.metaballsCount) uiElements.metaballsCountValue.textContent = uiElements.metaballsCount.value;
+    if (uiElements.metaballsSizeValue && uiElements.metaballsSize) uiElements.metaballsSizeValue.textContent = Number.parseFloat(uiElements.metaballsSize.value).toFixed(1);
+    if (uiElements.metaballsSpeedValue && uiElements.metaballsSpeed) uiElements.metaballsSpeedValue.textContent = Number.parseFloat(uiElements.metaballsSpeed.value).toFixed(1);
+    if (uiElements.metaballsThresholdValue && uiElements.metaballsThreshold) uiElements.metaballsThresholdValue.textContent = Number.parseFloat(uiElements.metaballsThreshold.value).toFixed(2);
+    if (uiElements.metaballsColorValue && uiElements.metaballsColor) uiElements.metaballsColorValue.textContent = Number.parseFloat(uiElements.metaballsColor.value).toFixed(2);
+
+    // Lissajous - Module handles its own labels via handleParamChange
+    window.LISSAJOUS_ANIMATION?.handleParamChange?.(); // Call handler to update its specific labels
+
+	// console.log("UI values updated via updateAllValueDisplays."); // Reduce logging noise
 }
 
+// --- UI Update Functions ---
 function updateUIForAnimationType(type) {
 	// Hide all animation-specific control sections
 	// Use for...of loop
@@ -848,6 +884,7 @@ function switchAnimation(type) {
 // --- Core Rendering Logic ---
 
 function renderToAscii() {
+    // console.log("renderToAscii called"); // Add log here
 	if (
 		!renderer ||
 		!scene ||
@@ -856,15 +893,20 @@ function renderToAscii() {
 		!downscaleCtx ||
 		!uiElements.display
 	) {
-		// console.warn("Render components not ready for ASCII conversion."); // Reduce console noise
+		console.warn("Render components not ready for ASCII conversion."); // Keep this warning
 		return;
 	}
 
 	// 1. Render Three.js scene to offscreen render target
-	renderer.setRenderTarget(renderTarget);
-	renderer.clear(); // Ensure clean state
-	renderer.render(scene, camera);
-	renderer.setRenderTarget(null); // Render back to canvas (optional, good practice)
+    try {
+        renderer.setRenderTarget(renderTarget);
+        renderer.clear(); // Ensure clean state
+        renderer.render(scene, camera);
+        renderer.setRenderTarget(null); // Render back to canvas (optional, good practice)
+    } catch (error) {
+        console.error("Error during scene rendering:", error);
+        return; // Stop if rendering fails
+    }
 
 	// 2. Read pixels from render target
 	const rtWidth = renderTarget.width;
@@ -899,12 +941,19 @@ function renderToAscii() {
 	tempCanvas.width = rtWidth;
 	tempCanvas.height = rtHeight;
 	const tempCtx = tempCanvas.getContext("2d");
-	const imageData = new ImageData(
-		new Uint8ClampedArray(buffer.buffer), // Use buffer.buffer for underlying ArrayBuffer
-		rtWidth,
-		rtHeight,
-	);
-	tempCtx.putImageData(imageData, 0, 0);
+    let imageData;
+    try {
+        imageData = new ImageData(
+            new Uint8ClampedArray(buffer.buffer), // Use buffer.buffer for underlying ArrayBuffer
+            rtWidth,
+            rtHeight,
+        );
+        tempCtx.putImageData(imageData, 0, 0);
+    } catch(error) {
+        console.error("Error creating/putting ImageData:", error);
+        return; // Stop if ImageData fails
+    }
+
 
 	// Draw from temp canvas to downscale canvas (performs scaling)
 	downscaleCtx.clearRect(0, 0, downscaleCanvas.width, downscaleCanvas.height);
@@ -921,13 +970,19 @@ function renderToAscii() {
 	);
 
 	// 4. Get pixel data from small canvas
-	const smallImageData = downscaleCtx.getImageData(
-		0,
-		0,
-		downscaleCanvas.width,
-		downscaleCanvas.height,
-	);
-	pixelData = smallImageData.data; // Update pixelData reference
+    try {
+        const smallImageData = downscaleCtx.getImageData(
+            0,
+            0,
+            downscaleCanvas.width,
+            downscaleCanvas.height,
+        );
+        pixelData = smallImageData.data; // Update pixelData reference
+    } catch(error) {
+        console.error("Error getting downscaled ImageData:", error);
+        return; // Stop if getting data fails
+    }
+
 
 	// 5. Convert to ASCII
 	const asciiWidth = downscaleCanvas.width;
@@ -942,6 +997,10 @@ function renderToAscii() {
 	for (let y = 0; y < asciiHeight; y++) {
 		for (let x = 0; x < asciiWidth; x++) {
 			const index = (y * asciiWidth + x) * 4;
+            if (index + 3 >= pixelData.length) {
+                console.warn(`Pixel data access out of bounds at x:${x}, y:${y}. Index: ${index}, Length: ${pixelData.length}`);
+                continue; // Skip this pixel if out of bounds
+            }
 			const r = pixelData[index];
 			const g = pixelData[index + 1];
 			const b = pixelData[index + 2];
@@ -973,15 +1032,18 @@ function renderToAscii() {
 
 	// 6. Display ASCII
 	uiElements.display.textContent = asciiString;
+    // console.log("ASCII display updated."); // Log success
 }
 
 // --- Animation Loop ---
 function animate() { // Removed currentTime parameter as it's unused
+    // console.log("animate called"); // Add log here
 	// Avoid parameter reassignment for currentTime
 	const elapsedSeconds = clock.getElapsedTime(); // Use THREE.Clock's elapsed time
 	const delta = clock.getDelta(); // Use THREE.Clock's delta time
 
 	if (!isPaused) {
+        // console.log("Animation running..."); // Log inside loop if needed (can be noisy)
 		// Update camera zoom (already handled by slider listener, but ensure matrix is updated)
 		// camera.fov = 75 - Number.parseFloat(uiElements.zoom.value); // Adjust FOV based on zoom
 		// camera.updateProjectionMatrix(); // FOV change requires projection matrix update
@@ -1010,7 +1072,8 @@ function animate() { // Removed currentTime parameter as it's unused
 			} catch (error) {
 				console.error(`Error during ${currentAnimationType} update:`, error); // Use template literal and log error object
 				// Optionally pause or switch to a default animation on error
-				// togglePause();
+				togglePause(); // Pause on error to prevent spamming
+                alert(`Error in animation update: ${error.message}. Pausing animation.`);
 			}
 		} else {
 			// console.warn(`Update function for animation type "${currentAnimationType}" not found.`);
@@ -1045,67 +1108,48 @@ function randomizeParameters() {
 	console.log("Randomizing parameters...");
 
 	// 1. Randomize Global Controls (excluding animation type, resolution, zoom for now)
-	uiElements.brightness.value = Math.random().toFixed(2);
-	uiElements.contrast.value = (0.1 + Math.random() * 4.9).toFixed(1); // Range 0.1 to 5.0
-	uiElements.invert.checked = Math.random() < 0.2; // 20% chance of being inverted
-	const charsetKeys = Object.keys(ASCII_CHARS_MAP);
-	uiElements.charset.value =
-		charsetKeys[Math.floor(Math.random() * charsetKeys.length)];
-	uiElements.renderTargetResolution.value = (0.5 + Math.random()).toFixed(2); // Range 0.5 to 1.5
+    if (uiElements.brightness) uiElements.brightness.value = Math.random().toFixed(2);
+	if (uiElements.contrast) uiElements.contrast.value = (0.1 + Math.random() * 4.9).toFixed(1); // Range 0.1 to 5.0
+	if (uiElements.invert) uiElements.invert.checked = Math.random() < 0.2; // 20% chance of being inverted
+	if (uiElements.charset) {
+        const charsetKeys = Object.keys(ASCII_CHARS_MAP);
+        uiElements.charset.value = charsetKeys[Math.floor(Math.random() * charsetKeys.length)];
+        // Update asciiChars immediately after changing select value
+        asciiChars = ASCII_CHARS_MAP[uiElements.charset.value] || ASCII_CHARS_MAP.dense;
+    }
+	if (uiElements.renderTargetResolution) uiElements.renderTargetResolution.value = (0.5 + Math.random()).toFixed(2); // Range 0.5 to 1.5
 
 	// Randomize Lighting
-	uiElements.ambientIntensity.value = (Math.random() * 2).toFixed(2);
-	uiElements.directionalIntensity.value = (Math.random() * 3).toFixed(1);
-	uiElements.lightPosX.value = (Math.random() * 20 - 10).toFixed(1); // -10 to 10
-	uiElements.lightPosY.value = (Math.random() * 20 - 10).toFixed(1);
-	uiElements.lightPosZ.value = (Math.random() * 20 - 10).toFixed(1);
+	if (uiElements.ambientIntensity) uiElements.ambientIntensity.value = (Math.random() * 2).toFixed(2);
+	if (uiElements.directionalIntensity) uiElements.directionalIntensity.value = (Math.random() * 3).toFixed(1);
+	if (uiElements.lightPosX) uiElements.lightPosX.value = (Math.random() * 20 - 10).toFixed(1); // -10 to 10
+	if (uiElements.lightPosY) uiElements.lightPosY.value = (Math.random() * 20 - 10).toFixed(1);
+	if (uiElements.lightPosZ) uiElements.lightPosZ.value = (Math.random() * 20 - 10).toFixed(1);
 
-	// Trigger events for global controls to update UI/state
+	// Trigger events for global controls to update UI/state AFTER setting values
 	updateAllValueDisplays(); // This should trigger listeners to update values/lights
 
-	// 2. Select a Random Animation Type
-	const animationTypes = Object.keys(controlContainers);
-	const randomType =
-		animationTypes[Math.floor(Math.random() * animationTypes.length)];
+	// 2. Select a Random Animation Type (excluding lighting itself)
+    const availableAnimations = Object.keys(controlContainers).filter(key => key !== 'lighting');
+	const randomType = availableAnimations[Math.floor(Math.random() * availableAnimations.length)];
 
 	// 3. Call the Randomize Function of the Selected Animation Module
 	const randomModule = window[`${randomType.toUpperCase()}_ANIMATION`];
 	if (randomModule?.randomize) { // Use optional chaining
 		try {
-			randomModule.randomize(); // Module handles its own sliders/selects and triggers events
-			console.log(`Called randomize for ${randomType} module.`);
+            console.log(`Calling randomize for ${randomType} module...`);
+			randomModule.randomize(); // Module handles its own sliders/selects and triggers events/updates
 		} catch (error) {
 			console.error(`Error randomizing ${randomType} module: ${error}`);
 		}
 	} else {
 		console.warn(`Randomize function not found for module ${randomType}.`);
-		// Fallback: Manually randomize sliders in the active container if module func missing
-		const activeContainer = controlContainers[randomType];
-		if (activeContainer) {
-			// Use for...of loop
-			for (const slider of activeContainer.querySelectorAll('input[type="range"]')) {
-				const min = Number.parseFloat(slider.min);
-				const max = Number.parseFloat(slider.max);
-				const step = Number.parseFloat(slider.step) || (max - min) / 100;
-				const randomValue = min + Math.random() * (max - min);
-				slider.value = (Math.round(randomValue / step) * step).toFixed(
-					step.toString().includes(".")
-						? step.toString().split(".")[1].length
-						: 0,
-				);
-				slider.dispatchEvent(new Event("input", { bubbles: true }));
-			}
-			// Use for...of loop
-			for (const select of activeContainer.querySelectorAll("select")) {
-				select.selectedIndex = Math.floor(
-					Math.random() * select.options.length,
-				);
-				select.dispatchEvent(new Event("change", { bubbles: true }));
-			}
-		}
+        // Fallback handled within module randomize functions now (setting values + dispatching)
 	}
 
 	// 4. Switch to the new animation type AFTER randomizing its parameters
+    // The switchAnimation function calls setup, which should handle initial state
+    // and call updateAllValueDisplays if necessary.
 	switchAnimation(randomType);
 }
 

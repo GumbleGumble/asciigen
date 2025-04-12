@@ -16,6 +16,7 @@
     <h1 class="text-4xl md:text-5xl font-mono font-bold text-center mb-6 text-blue-300 title-shadow">asciigen</h1>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Controls Column -->
         <div class="md:col-span-1 space-y-4">
             <!-- General Controls Section -->
             <div class="control-section">
@@ -294,7 +295,8 @@
                 </div>
             </div>
 
-            <div id="lissajous-controls" class="control-section animation-controls"></div>
+            <!-- Corrected Lissajous structure -->
+            <div id="lissajous-controls" class="control-section animation-controls">
                 <h2 class="text-xl font-semibold mb-3 text-gray-100">Lissajous Controls</h2>
                 <div>
                     <label for="lissajous-a-slider" class="slider-label">Frequency A (X):</label>
@@ -334,12 +336,11 @@
             </div>
         </div>
 
-        <!-- ASCII Output Area -->
-        <!-- Removed flex flex-col and flex-grow from this div -->
+        <!-- ASCII Output Column -->
         <div class="md:col-span-2">
-            <div id="ascii-output-container" class="relative border border-gray-700 rounded-lg overflow-hidden"> <!-- Make container grow and manage overflow -->
-                <!-- Ensure ID matches script.js -->
-                <pre id="asciiDisplay" class="absolute inset-0 w-full h-full">Loading ASCII Animation...</pre> <!-- Position pre absolutely within container -->
+            <!-- Give container a relative position and a height -->
+            <div id="ascii-output-container" class="relative border border-gray-700 rounded-lg overflow-hidden h-[80vh]"> <!-- Added h-[80vh] -->
+                <pre id="asciiDisplay" class="absolute inset-0 w-full h-full">Loading ASCII Animation...</pre>
             </div>
             <p class="text-xs text-gray-500 mt-2 text-center">Animation is rendered using Three.js and converted to ASCII characters.</p>
         </div>
@@ -362,8 +363,9 @@
 
     <!-- Core animation functionality (Load AFTER modules) -->
     <!-- <script src="js/main.js"></script> --> <!-- Removed main.js -->
-    <script type="module" src="js/script.js"></script> <!-- Load script.js as module if using import -->
-    <!-- If not using import, load as regular script: <script src="js/script.js"></script> -->
+    <!-- <script type="module" src="js/script.js"></script> --> <!-- Load script.js as module if using import -->
+    <!-- If not using import, load as regular script: -->
+     <script src="js/script.js"></script> <!-- Removed type="module" -->
 
 </body>
 </html>

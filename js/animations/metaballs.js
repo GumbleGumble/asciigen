@@ -1,4 +1,4 @@
-// Metaballs Animation Module
+// Metaballs Animation Module - Needs Implementation
 
 // Shader code (unchanged)
 const metaballsVertexShader = `
@@ -9,83 +9,76 @@ const metaballsVertexShader = `
   }
 `;
 
+// Basic Metaballs Fragment Shader (Example - replace with more robust version)
 const metaballsFragmentShader = `
-  varying vec2 vUv;
-  uniform float u_time;
-  uniform int u_ball_count; // Use int
-  uniform float u_ball_size;
-  uniform float u_speed;
-  uniform float u_threshold;
-  uniform float u_color_blend; // 0.0 to 1.0
+    varying vec2 vUv;
+    uniform float u_time;
+    uniform int u_num_metaballs; // Max number supported by shader
+    uniform vec3 u_metaballs[25]; // Array for position (xy) and radius (z), max 25
+    uniform float u_threshold;
+    uniform float u_color_blend; // 0 = blue, 1 = red
 
-  // Simple pseudo-random generator
-  float rand(vec2 co){
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-  }
+    void main() {
+        float totalInfluence = 0.0;
+        vec2 uvCentered = vUv * 2.0 - 1.0; // Center UVs (-1 to 1)
+        // Adjust aspect ratio if needed, assuming square for now
+        // float aspectRatio = 1.0; // Calculate based on resolution if needed
+        // uvCentered.x *= aspectRatio;
 
-  void main() {
-    vec2 p = vUv * 10.0 - 5.0; // Scale UVs to -5 to 5 range
-    float sum = 0.0;
+        float scaleFactor = 5.0; // Scale UVs to match typical metaball positions
 
-    for (int i = 0; i < 30; ++i) { // Max balls limit in shader
-        if (i >= u_ball_count) break; // Stop if we exceed the requested count
+        for (int i = 0; i < 25; ++i) {
+            if (i >= u_num_metaballs) break; // Process only active metaballs
 
-        float fi = float(i);
-        // Generate pseudo-random movement patterns
-        float timeFactor = u_time * u_speed * 0.2;
-        float offsetX = sin(timeFactor * (0.5 + rand(vec2(fi, fi*0.5))) + fi * 2.0) * 3.0;
-        float offsetY = cos(timeFactor * (0.5 + rand(vec2(fi*0.5, fi))) + fi * 2.5) * 3.0;
-        float offsetZ = sin(timeFactor * (0.3 + rand(vec2(fi, fi))) + fi * 1.5) * 0.5 + 0.5; // Size variation
+            vec2 ballPos = u_metaballs[i].xy;
+            float radius = u_metaballs[i].z;
+            if (radius <= 0.0) continue; // Skip inactive balls
 
-        vec2 ballPos = vec2(offsetX, offsetY);
-        float ballSize = u_ball_size * offsetZ; // Vary size slightly
+            vec2 diff = (uvCentered * scaleFactor) - ballPos;
+            float distSq = dot(diff, diff);
+            // Inverse square falloff
+            totalInfluence += (radius * radius) / distSq;
+        }
 
-        float d = length(p - ballPos);
-        sum += ballSize / d; // Inverse distance for metaball effect
+        float intensity = smoothstep(u_threshold - 0.1, u_threshold + 0.1, totalInfluence);
+
+        if (intensity < 0.01) {
+             discard; // Discard fragment if below threshold (transparent background)
+             // Or set to background color: gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        }
+
+        // Simple color blend based on influence or uniform
+        vec3 colorA = vec3(0.2, 0.5, 1.0); // Blue
+        vec3 colorB = vec3(1.0, 0.3, 0.3); // Red
+        vec3 finalColor = mix(colorA, colorB, u_color_blend); // Blend based on slider
+
+        gl_FragColor = vec4(finalColor * intensity, 1.0);
     }
-
-    // Apply threshold with smoothing
-    float intensity = smoothstep(u_threshold - 0.1, u_threshold + 0.1, sum);
-
-    // Basic color blending
-    vec3 color1 = vec3(0.1, 0.2, 0.8); // Blue
-    vec3 color2 = vec3(0.8, 0.1, 0.2); // Red
-    vec3 finalColor = mix(color1, color2, u_color_blend) * intensity;
-
-    gl_FragColor = vec4(finalColor, 1.0);
-  }
 `;
-
-// Define controls mapping if not already in script.js
-// Assuming uiElements and metaballsControls exist globally from script.js
-// const metaballsControls = { // Already defined in script.js
-//     sliderCount: uiElements.metaballsCount,
-//     valueCount: uiElements.metaballsCountValue,
-//     sliderSize: uiElements.metaballsSize,
-//     valueSize: uiElements.metaballsSizeValue,
-//     sliderSpeed: uiElements.metaballsSpeed,
-//     valueSpeed: uiElements.metaballsSpeedValue,
-//     sliderThreshold: uiElements.metaballsThreshold,
-//     valueThreshold: uiElements.metaballsThresholdValue,
-//     sliderColor: uiElements.metaballsColor,
-//     valueColor: uiElements.metaballsColorValue,
-// };
 
 
 function setupMetaballsAnimation() {
-    console.log("Setting up Metaballs animation");
-    const geometry = new THREE.PlaneGeometry(10, 10);
+    console.log("Setting up Metaballs animation (Implementation Pending)");
+    // TODO: Implement plane, shader material, uniforms, metaball data array
+    const geometry = new THREE.PlaneGeometry(10, 10); // Covers view
+
+    // Initialize metaball data array (pos.x, pos.y, radius)
+    const maxBalls = 25; // Must match shader array size
+    const metaballData = new Float32Array(maxBalls * 3);
+    animationObjects.metaballData = metaballData; // Store for updates
+    animationObjects.metaballVelocities = new Float32Array(maxBalls * 2); // Store velocities (vx, vy)
+
     const material = new THREE.ShaderMaterial({
         vertexShader: metaballsVertexShader,
         fragmentShader: metaballsFragmentShader,
         uniforms: {
             u_time: { value: 0.0 },
-            u_ball_count: { value: Number.parseInt(metaballsControls.sliderCount.value) || 8 },
-            u_ball_size: { value: Number.parseFloat(metaballsControls.sliderSize.value) || 1.2 },
-            u_speed: { value: Number.parseFloat(metaballsControls.sliderSpeed.value) || 1.0 },
-            u_threshold: { value: Number.parseFloat(metaballsControls.sliderThreshold.value) || 1.0 },
-            u_color_blend: { value: Number.parseFloat(metaballsControls.sliderColor.value) || 0.5 },
+            u_num_metaballs: { value: Number.parseInt(metaballsControls.sliderCount?.value || 8) },
+            u_metaballs: { value: metaballData }, // Pass the array
+            u_threshold: { value: Number.parseFloat(metaballsControls.sliderThreshold?.value || 1.0) },
+            u_color_blend: { value: Number.parseFloat(metaballsControls.sliderColor?.value || 0.5) },
         },
+        transparent: true, // Needed if using discard or alpha
     });
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -96,61 +89,133 @@ function setupMetaballsAnimation() {
     animationObjects.material = material;
     animationObjects.geometry = geometry;
 
-    // Add listeners (handled in script.js, ensure handleMetaballsParamChange exists)
-    // metaballsControls.sliderCount.addEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderSize.addEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderSpeed.addEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderThreshold.addEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderColor.addEventListener('input', handleMetaballsParamChange);
+    // Initialize ball positions and velocities
+    initializeMetaballs();
+
+    // Initial UI update handled by script.js
 }
 
 function cleanupMetaballsAnimation() {
-    console.log("Cleaning up Metaballs animation");
+    console.log("Cleaning up Metaballs animation (Implementation Pending)");
+    // TODO: Remove objects, dispose geometry/material
     if (animationObjects.mesh) {
         scene.remove(animationObjects.mesh);
-        if (animationObjects.geometry) animationObjects.geometry.dispose();
-        if (animationObjects.material) animationObjects.material.dispose();
+        animationObjects.geometry?.dispose();
+        animationObjects.material?.dispose();
     }
     animationObjects.mesh = null;
     animationObjects.material = null;
     animationObjects.geometry = null;
-
-    // Remove listeners (handled centrally in script.js)
-    // metaballsControls.sliderCount.removeEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderSize.removeEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderSpeed.removeEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderThreshold.removeEventListener('input', handleMetaballsParamChange);
-    // metaballsControls.sliderColor.removeEventListener('input', handleMetaballsParamChange);
+    animationObjects.metaballData = null;
+    animationObjects.metaballVelocities = null;
 }
 
-// Handle changes to metaballs parameters (no recreation needed)
-function handleMetaballsParamChange() {
-    // Check if currentAnimationType is defined globally (from script.js)
-    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'metaballs' || !animationObjects.material) return;
+function initializeMetaballs() {
+    if (!animationObjects.metaballData || !animationObjects.metaballVelocities) return;
 
-    const count = Number.parseInt(metaballsControls.sliderCount.value);
+    const numBalls = Number.parseInt(metaballsControls.sliderCount?.value || 8);
+    const size = Number.parseFloat(metaballsControls.sliderSize?.value || 1.2);
+    const speed = Number.parseFloat(metaballsControls.sliderSpeed?.value || 1.0);
+    const data = animationObjects.metaballData;
+    const velocities = animationObjects.metaballVelocities;
+    const bounds = 4.0; // Movement bounds
+
+    for (let i = 0; i < 25; i++) { // Initialize entire array
+        const i3 = i * 3;
+        const i2 = i * 2;
+        if (i < numBalls) {
+            // Position (random within bounds)
+            data[i3] = (Math.random() - 0.5) * 2 * bounds;
+            data[i3 + 1] = (Math.random() - 0.5) * 2 * bounds;
+            // Radius
+            data[i3 + 2] = size * (0.8 + Math.random() * 0.4); // Slight size variation
+
+            // Velocity (random direction)
+            const angle = Math.random() * Math.PI * 2;
+            const velMag = speed * (0.5 + Math.random());
+            velocities[i2] = Math.cos(angle) * velMag;
+            velocities[i2 + 1] = Math.sin(angle) * velMag;
+        } else {
+            // Deactivate extra balls
+            data[i3 + 2] = 0.0; // Set radius to 0
+            velocities[i2] = 0.0;
+            velocities[i2 + 1] = 0.0;
+        }
+    }
+    // Update uniform count
+    if (animationObjects.material) {
+        animationObjects.material.uniforms.u_num_metaballs.value = numBalls;
+    }
+}
+
+
+function handleMetaballsParamChange() {
+    if (currentAnimationType !== 'metaballs' || !animationObjects.material) return;
+    console.log("Handling Metaballs parameter change (Implementation Pending)");
+    // TODO: Update shader uniforms, potentially re-initialize balls if count/size changes significantly
+    const numBalls = Number.parseInt(metaballsControls.sliderCount.value);
     const size = Number.parseFloat(metaballsControls.sliderSize.value);
-    const speed = Number.parseFloat(metaballsControls.sliderSpeed.value);
     const threshold = Number.parseFloat(metaballsControls.sliderThreshold.value);
     const colorBlend = Number.parseFloat(metaballsControls.sliderColor.value);
 
-    animationObjects.material.uniforms.u_ball_count.value = count;
-    animationObjects.material.uniforms.u_ball_size.value = size;
-    animationObjects.material.uniforms.u_speed.value = speed;
+    // Check if count or size changed enough to warrant re-initialization
+    if (animationObjects.material.uniforms.u_num_metaballs.value !== numBalls) {
+         console.log("Metaball count changed, re-initializing...");
+         initializeMetaballs(); // Re-init positions/velocities/radii
+    } else {
+        // If only size changed, update radii of existing balls
+        const data = animationObjects.metaballData;
+        for (let i = 0; i < numBalls; i++) {
+            data[i * 3 + 2] = size * (0.8 + Math.random() * 0.4); // Re-randomize slightly based on new size
+        }
+    }
+
+
+    animationObjects.material.uniforms.u_num_metaballs.value = numBalls;
     animationObjects.material.uniforms.u_threshold.value = threshold;
     animationObjects.material.uniforms.u_color_blend.value = colorBlend;
+    // Speed is read in update loop
 
-    // Update UI labels (already done in script.js listener)
+    // UI label updates are handled by the main script's event listeners
 }
 
-// Animation update function for metaballs
 function updateMetaballsAnimation(deltaTime, elapsedTime) {
-    if (!animationObjects.material) return;
+    if (!animationObjects.material || !animationObjects.metaballData || !animationObjects.metaballVelocities) return;
+    // TODO: Update metaball positions based on velocities, handle boundary collisions, update time uniform
+    const speed = Number.parseFloat(metaballsControls.sliderSpeed.value); // Read current speed
+    const data = animationObjects.metaballData;
+    const velocities = animationObjects.metaballVelocities;
+    const numBalls = animationObjects.material.uniforms.u_num_metaballs.value;
+    const bounds = 4.0; // Movement bounds, should match initialization
+
+    for (let i = 0; i < numBalls; i++) {
+        const i3 = i * 3;
+        const i2 = i * 2;
+
+        // Update position
+        data[i3] += velocities[i2] * deltaTime * speed;
+        data[i3 + 1] += velocities[i2 + 1] * deltaTime * speed;
+
+        // Boundary collision (simple reflection)
+        if (data[i3] > bounds || data[i3] < -bounds) {
+            velocities[i2] *= -1;
+            data[i3] = Math.sign(data[i3]) * bounds; // Clamp position
+        }
+        if (data[i3 + 1] > bounds || data[i3 + 1] < -bounds) {
+            velocities[i2 + 1] *= -1;
+            data[i3 + 1] = Math.sign(data[i3 + 1]) * bounds; // Clamp position
+        }
+    }
+
+    // Update uniforms
     animationObjects.material.uniforms.u_time.value = elapsedTime;
+    animationObjects.material.uniforms.u_metaballs.value = data; // Update the whole array
+    animationObjects.material.uniforms.u_metaballs.needsUpdate = true; // Important for arrays? Check Three.js docs. Usually needed for textures.
 }
 
 function randomizeMetaballsParameters() {
-    console.log("Randomizing Metaballs parameters...");
+    console.log("Randomizing Metaballs parameters (Implementation Pending)");
+    // TODO: Randomize metaballsControls sliders and trigger 'input' event
     const sliders = [
         metaballsControls.sliderCount,
         metaballsControls.sliderSize,
@@ -158,26 +223,23 @@ function randomizeMetaballsParameters() {
         metaballsControls.sliderThreshold,
         metaballsControls.sliderColor,
     ];
-
     for (const slider of sliders) {
-         if (!slider) continue;
+        if (!slider) continue;
         const min = Number.parseFloat(slider.min);
         const max = Number.parseFloat(slider.max);
         const step = Number.parseFloat(slider.step) || (max - min) / 100;
-        const randomValue = min + Math.random() * (max - min);
-        slider.value = (Math.round(randomValue / step) * step).toFixed(
-            step.toString().includes('.') ? step.toString().split('.')[1].length : 0
-        );
-        // Trigger input event to update uniforms via handleMetaballsParamChange and labels via script.js
-        slider.dispatchEvent(new Event('input', { bubbles: true }));
+        const range = max - min;
+        const randomSteps = Math.floor(Math.random() * (range / step + 1));
+        slider.value = min + randomSteps * step;
+        slider.dispatchEvent(new Event('input', { bubbles: true })); // Trigger update
     }
 }
 
-// Make functions available to the main script
+// Expose module methods
 window.METABALLS_ANIMATION = {
     setup: setupMetaballsAnimation,
     update: updateMetaballsAnimation,
     cleanup: cleanupMetaballsAnimation,
     randomize: randomizeMetaballsParameters,
-    handleParamChange: handleMetaballsParamChange // Unified handler
+    handleParamChange: handleMetaballsParamChange
 };
