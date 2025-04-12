@@ -7,7 +7,7 @@ body {
 
 /* Add title shadow style */
 .title-shadow {
-    text-shadow: 0 0 8px rgba(147, 197, 253, 0.5); /* Tailwind blue-300 glow */
+    text-shadow: 0 0 10px rgba(147, 161, 253, 0.5); /* Tailwind blue-300 glow */
 }
 
 /* Use the correct ID from index.html */
