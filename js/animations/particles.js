@@ -9,16 +9,19 @@ const SimplexNoise = window.SimplexNoise || {
 if (!window.SimplexNoise) {
     console.warn("SimplexNoise library not found, using simple random fallback for particle flow.");
 }
+// Instantiate simplex noise generator
+const simplex = new SimplexNoise();
+
 
 // Expose module methods
 window.PARTICLES_ANIMATION = {
-	setup: setupParticleAnimation,
-	update: updateParticlesAnimation,
-	cleanup: cleanupParticleAnimation,
-	randomize: randomizeParticleParameters,
-	handleCountChange: handleParticleCountChange, // Specific handler for count
-	handleEmitterChange: handleParticleEmitterChange, // Specific handler for emitter
-	handleParamChange: handleParticleParamChange, // General handler for other params
+    setup: setupParticleAnimation,
+    update: updateParticleAnimation,
+    cleanup: cleanupParticleAnimation,
+    randomize: randomizeParticleParameters,
+    handleCountChange: handleParticleCountChange, // Specific handler for count
+    handleEmitterChange: handleParticleEmitterChange, // Handler for other params
+    handleParamChange: handleParticleParamChange, // General handler for other params
 };
 
 // --- Simplex Noise Permutation Table (if needed directly, otherwise use library) ---
@@ -47,7 +50,9 @@ function resetParticle(
 	const lifespan = Math.random() * maxLifespan * 0.5 + maxLifespan * 0.5; // Random lifespan between 50% and 100%
 	lifespans[index] = lifespan;
 	initialLifespans[index] = lifespan; // Store the initial max lifespan
-    sizes[index] = baseSize * (0.5 + Math.random()); // Initial size variation
+    // Set initial size variation ONCE here. Ensure it's positive.
+    // This value will be read by the vertex shader.
+    sizes[index] = Math.max(0.1, baseSize * (0.5 + Math.random() * 1.0)); // Base size + up to 100% variation
 
 	// Initial position based on emitter shape
 	let initialSpeedFactor = 0.1; // Base initial speed
@@ -56,38 +61,43 @@ function resetParticle(
     let velZ = 0;
 
 	if (emitterShape === "sphere") {
-		const phi = Math.acos(-1 + 2 * Math.random()); // Uniform point on sphere surface
-		const theta = Math.random() * Math.PI * 2;
-		const radius = Math.cbrt(Math.random()) * emitterSize; // Uniform point within sphere volume
+		// Uniform point on sphere surface
+		// const phi = Math.acos(-1 + 2 * Math.random());
+		// const theta = Math.random() * Math.PI * 2;
+		// Uniform point within sphere volume (use cube root for uniform volume distribution)
+        const u = Math.random();
+        const v = Math.random();
+        const theta = 2 * Math.PI * u;
+        const phi = Math.acos(2 * v - 1);
+		const radius = Math.cbrt(Math.random()) * emitterSize; // Use cube root for volume
 		positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
 		positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
 		positions[i3 + 2] = radius * Math.cos(phi);
-		// Velocity outward from center
-		const posLen = Math.sqrt(positions[i3]**2 + positions[i3+1]**2 + positions[i3+2]**2) || 1;
-		initialSpeedFactor = 0.2; // Slightly faster start for sphere
-		velX = (positions[i3] / posLen) * initialSpeedFactor * (Math.random() + 0.5);
-		velY = (positions[i3 + 1] / posLen) * initialSpeedFactor * (Math.random() + 0.5);
-		velZ = (positions[i3 + 2] / posLen) * initialSpeedFactor * (Math.random() + 0.5);
+			// Initial velocity outwards from center
+		const speed = initialSpeedFactor * (0.5 + Math.random() * 0.5);
+		velX = positions[i3] * speed / Math.max(0.1, radius); // Normalize and scale
+		velY = positions[i3 + 1] * speed / Math.max(0.1, radius);
+		velZ = positions[i3 + 2] * speed / Math.max(0.1, radius);
 	} else if (emitterShape === "point") {
 		positions[i3] = 0;
 		positions[i3 + 1] = 0;
 		positions[i3 + 2] = 0;
-		// Velocity outward in random direction
+			// Initial velocity in random direction
+		const speed = initialSpeedFactor * (0.8 + Math.random() * 0.4);
 		const phi = Math.acos(-1 + 2 * Math.random());
 		const theta = Math.random() * Math.PI * 2;
-		initialSpeedFactor = 0.3; // Faster start for point
-		velX = initialSpeedFactor * Math.sin(phi) * Math.cos(theta) * (Math.random() + 0.5);
-		velY = initialSpeedFactor * Math.sin(phi) * Math.sin(theta) * (Math.random() + 0.5);
-		velZ = initialSpeedFactor * Math.cos(phi) * (Math.random() + 0.5);
+		velX = speed * Math.sin(phi) * Math.cos(theta);
+		velY = speed * Math.sin(phi) * Math.sin(theta);
+		velZ = speed * Math.cos(phi);
 	} else {
-		// Default to box
-		positions[i3] = (Math.random() - 0.5) * emitterSize * 2;
-		positions[i3 + 1] = (Math.random() - 0.5) * emitterSize * 2;
-		positions[i3 + 2] = (Math.random() - 0.5) * emitterSize * 2;
-		// Random initial velocity
-		velX = (Math.random() - 0.5) * initialSpeedFactor;
-		velY = (Math.random() - 0.5) * initialSpeedFactor;
-		velZ = (Math.random() - 0.5) * initialSpeedFactor;
+		// Default to box emitter
+		positions[i3] = (Math.random() - 0.5) * emitterSize;
+		positions[i3 + 1] = (Math.random() - 0.5) * emitterSize;
+		positions[i3 + 2] = (Math.random() - 0.5) * emitterSize;
+		// Initial velocity slightly upwards or random
+		velX = (Math.random() - 0.5) * initialSpeedFactor * 0.5;
+		velY = Math.random() * initialSpeedFactor;
+		velZ = (Math.random() - 0.5) * initialSpeedFactor * 0.5;
 	}
 
 	velocities[i3] = velX;
@@ -95,9 +105,9 @@ function resetParticle(
 	velocities[i3 + 2] = velZ;
 
 	// Initial color (e.g., based on position or random)
-	const hue = (Math.random() * 0.2 + 0.55) % 1.0; // Blue/purple range
-	const saturation = 0.7 + Math.random() * 0.3;
-	const lightness = 0.6 + Math.random() * 0.2;
+	const hue = Math.random() * 0.1 + 0.55; // Bluish-cyan range
+	const saturation = 0.8 + Math.random() * 0.2;
+	const lightness = 0.5 + Math.random() * 0.3;
 	const color = new THREE.Color().setHSL(hue, saturation, lightness);
 	colors[i3] = color.r;
 	colors[i3 + 1] = color.g;
@@ -110,13 +120,11 @@ function setupParticleAnimation() {
 	console.log("Setting up Particle System animation");
 
 	// Get parameters from controls
-	const particleCount = Number.parseInt(particlesControls.sliderCount.value);
-	const baseSize = Number.parseFloat(particlesControls.sliderSize.value); // Use base size
-	const emitterShape = particlesControls.selectEmitterShape.value;
-	const emitterSize = Number.parseFloat(
-		particlesControls.sliderEmitterSize.value,
-	);
-	const lifespan = Number.parseFloat(particlesControls.sliderLifespan.value);
+	const particleCount = Number.parseInt(particlesControls.sliderCount?.value || 2000);
+	const baseSize = Number.parseFloat(particlesControls.sliderSize?.value || 1.0); // Use base size
+	const emitterShape = particlesControls.selectEmitterShape?.value || 'box';
+	const emitterSize = Number.parseFloat(particlesControls.sliderEmitterSize?.value || 5.0);
+	const lifespan = Number.parseFloat(particlesControls.sliderLifespan?.value || 5.0);
 
 	// Create particle geometry
 	const particlesGeometry = new THREE.BufferGeometry();
@@ -128,6 +136,7 @@ function setupParticleAnimation() {
 	const initialLifespans = new Float32Array(particleCount);
 	const colors = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount); // Add sizes array
+    const alphas = new Float32Array(particleCount); // Add alpha array
 
 	// Initialize particles
 	for (let i = 0; i < particleCount; i++) {
@@ -144,6 +153,7 @@ function setupParticleAnimation() {
 			lifespan,
             baseSize // Pass base size
 		);
+        alphas[i] = 1.0; // Initialize alpha to 1
 	}
 
 	// Set geometry attributes
@@ -152,88 +162,89 @@ function setupParticleAnimation() {
 		new THREE.BufferAttribute(positions, 3),
 	);
 	particlesGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    particlesGeometry.setAttribute("particleSize", new THREE.BufferAttribute(sizes, 1)); // Use a distinct name like 'particleSize'
+    // Use a distinct name like 'particleSize' for the size attribute
+    particlesGeometry.setAttribute("particleSize", new THREE.BufferAttribute(sizes, 1));
+    particlesGeometry.setAttribute("alpha", new THREE.BufferAttribute(alphas, 1)); // Add alpha attribute
 
 	// Create particle material - Use ShaderMaterial for size/alpha control
 	const particleVertexShader = `
         attribute float particleSize; // Use the correct attribute name
-        // 'color' attribute is automatically handled by Three.js when vertexColors = true
-        varying vec3 vColor;
-        // varying float vAlpha; // Alpha needs lifespan info, handle in fragment shader for now
-
-        uniform float baseSize; // Pass base size from slider
-        uniform float sizeAttenuationFactor; // Control size attenuation
+        attribute float alpha; // Receive alpha attribute
+        attribute vec3 color; // Receive vertex color
+        varying vec3 vColor; // Pass color to fragment shader
+        varying float vAlpha; // Pass alpha to fragment shader
+        uniform float u_base_size_multiplier; // Global size multiplier from slider
+        // uniform float u_lifespan_left; // Normalized lifespan (1 = new, 0 = dead) - Calculated per particle
 
         void main() {
-            vColor = color; // Pass vertex color to fragment shader
+            vColor = color; // Pass vertex color through
+            vAlpha = alpha; // Pass alpha through
 
-            // Calculate point size based on attribute and base size slider
+            // Calculate point size based on attribute and lifespan
+            // float size = particleSize * u_base_size_multiplier * lifespanLeft;
+            // Use the attribute directly for now, ensure it's passed correctly
+            float size = particleSize * u_base_size_multiplier;
+
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            float pointSize = particleSize * baseSize; // Use attribute and base size
-
-            // Size attenuation (optional, THREE.PointsMaterial does this)
-            // Make sure sizeAttenuationFactor is reasonable (e.g., viewport height / 2)
-            // gl_PointSize = pointSize * (sizeAttenuationFactor / -mvPosition.z);
-
-            // Simpler size calculation for debugging:
-            gl_PointSize = pointSize; // Start with non-attenuated size
-
+            gl_PointSize = size * (300.0 / -mvPosition.z); // Adjust size based on distance
             gl_Position = projectionMatrix * mvPosition;
         }
     `;
 
-    const particleFragmentShader = `
+	const particleFragmentShader = `
         varying vec3 vColor;
-        // varying float vAlpha; // Alpha calculation would go here if passed
-
-        // uniform sampler2D pointTexture; // Texture for particle shape
+        varying float vAlpha; // Receive alpha from vertex shader
 
         void main() {
-            // Simple circular particle shape
+            // Create circular shape
             float dist = length(gl_PointCoord - vec2(0.5));
-            if (dist > 0.45) discard; // Slightly smaller radius to ensure visibility
+            if (dist > 0.5) {
+                discard; // Discard fragments outside the circle
+            }
 
-            // Use vertex color
-            // Alpha could be calculated based on lifespan attribute if passed
-            gl_FragColor = vec4(vColor, 1.0); // Use full alpha for now
-
-            // Optional: Use texture
-            // gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+            // Apply alpha calculated in vertex shader (and potentially faded)
+            // Add soft edge to the circle
+            float edgeFactor = 1.0 - smoothstep(0.45, 0.5, dist);
+            gl_FragColor = vec4(vColor, vAlpha * edgeFactor); // Fade towards center/edge
         }
     `;
 
-	const particlesMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            baseSize: { value: baseSize * 10.0 }, // Multiply baseSize for initial visibility test
-            sizeAttenuationFactor: { value: 5.0 }, // Adjust later if needed
-            // pointTexture: { value: new THREE.TextureLoader().load('path/to/particle.png') }
+	const particleMaterial = new THREE.ShaderMaterial({
+		vertexShader: particleVertexShader,
+		fragmentShader: particleFragmentShader,
+		uniforms: {
+            // Add uniforms if needed, e.g., for global size or time
+            u_base_size_multiplier: { value: 1.0 }, // Start with multiplier 1
+            // u_lifespan_left: { value: 1.0 } // This needs to be per-particle, handled differently
         },
-        vertexShader: particleVertexShader,
-        fragmentShader: particleFragmentShader,
-        vertexColors: true, // Enable vertex colors attribute ('color')
-        blending: THREE.AdditiveBlending,
-        depthWrite: false, // Crucial for blending
-        transparent: true, // Allow transparency/discard
-    });
+		vertexColors: true, // Use vertex colors attribute
+		transparent: true, // Enable transparency
+		depthWrite: false, // Disable depth writing for better blending
+		blending: THREE.AdditiveBlending, // Additive blending often looks good for particles
+	});
 
-
-	// Create particle system
-	const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+	// Create particle system (Points object)
+	const particleSystem = new THREE.Points(particlesGeometry, particleMaterial);
 	particleSystem.name = "particleSystem";
 	scene.add(particleSystem);
 
 	// Store references
 	animationObjects.particleSystem = particleSystem;
 	animationObjects.particlesGeometry = particlesGeometry;
-	animationObjects.particlesMaterial = particlesMaterial;
+	animationObjects.particlesMaterial = particleMaterial;
 	animationObjects.positions = positions;
 	animationObjects.velocities = velocities;
 	animationObjects.lifespans = lifespans;
 	animationObjects.initialLifespans = initialLifespans;
 	animationObjects.colors = colors;
     animationObjects.sizes = sizes; // Store sizes array
+    // Store alpha array reference if needed elsewhere, though it's mainly updated in update loop
+    // animationObjects.alphas = alphas;
 	animationObjects.particleCount = particleCount;
 	animationObjects.maxLifespan = lifespan;
+
+    // Initial update of size uniform based on slider
+    handleParticleParamChange();
 
     updateAllValueDisplays();
 }
@@ -242,12 +253,10 @@ function cleanupParticleAnimation() {
 	console.log("Cleaning up Particle System animation");
 	if (animationObjects.particleSystem) {
 		scene.remove(animationObjects.particleSystem);
-		if (animationObjects.particlesGeometry)
-			animationObjects.particlesGeometry.dispose();
-		if (animationObjects.particlesMaterial)
-			animationObjects.particlesMaterial.dispose();
+		animationObjects.particlesGeometry?.dispose();
+		animationObjects.particlesMaterial?.dispose();
 	}
-	// Clear all particle-specific properties
+	// Clear all related properties
 	animationObjects.particleSystem = null;
 	animationObjects.particlesGeometry = null;
 	animationObjects.particlesMaterial = null;
@@ -256,59 +265,57 @@ function cleanupParticleAnimation() {
 	animationObjects.lifespans = null;
 	animationObjects.initialLifespans = null;
 	animationObjects.colors = null;
-	animationObjects.emitterShape = null;
-	animationObjects.emitterSize = null;
+    animationObjects.sizes = null;
 	animationObjects.particleCount = null;
 	animationObjects.maxLifespan = null;
+    // animationObjects.alphas = null;
 }
 
+// Handler for count changes (requires recreation)
 function handleParticleCountChange() {
-	// Check if currentAnimationType is defined globally (from script.js)
-    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "particles") return;
-	console.log("Particle count changed, recreating...");
-	cleanupParticleAnimation();
-	setupParticleAnimation();
+    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'particles') return;
+    console.log("Particle count changed, recreating...");
+    cleanupParticleAnimation();
+    setupParticleAnimation();
 }
 
+// Handler for emitter changes (requires recreation)
+function handleParticleEmitterChange() {
+    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'particles') return;
+    console.log("Particle emitter changed, recreating...");
+    cleanupParticleAnimation();
+    setupParticleAnimation();
+}
+
+// Handler for other parameter changes (size, lifespan, speed, force)
 function handleParticleParamChange() {
-	// Check if currentAnimationType is defined globally (from script.js)
-    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "particles" || !animationObjects.particlesMaterial)
-		return;
+    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'particles' || !animationObjects.particlesMaterial) return;
+    // console.log("Handling Particle parameter change (non-recreation)"); // Debug log
 
-	// Update material base size uniform if control exists
-	if (particlesControls.sliderSize && animationObjects.particlesMaterial.uniforms.baseSize) {
-		const baseSize = Number.parseFloat(particlesControls.sliderSize.value);
-        // Adjust multiplier as needed for visual scale
-		animationObjects.particlesMaterial.uniforms.baseSize.value = baseSize * 10.0;
-	}
-
-	// Update max lifespan if control exists and value changed
-	if (particlesControls.sliderLifespan) {
-		const newMaxLifespan = Number.parseFloat(particlesControls.sliderLifespan.value);
-		if (animationObjects.maxLifespan !== newMaxLifespan) {
-			animationObjects.maxLifespan = newMaxLifespan;
-			console.log("Max lifespan updated to:", newMaxLifespan);
-		}
-	}
-
-    // Other parameters like speed, force type, strength are read directly in update loop
+    // Update material uniforms or other non-geometry related states
+    if (particlesControls.sliderSize) {
+        const baseSizeMultiplier = Number.parseFloat(particlesControls.sliderSize.value);
+        animationObjects.particlesMaterial.uniforms.u_base_size_multiplier.value = baseSizeMultiplier;
+        // console.log("Updated base size multiplier:", baseSizeMultiplier); // Debug log
+    }
+    if (particlesControls.sliderLifespan) {
+        // Update maxLifespan used when resetting particles
+        animationObjects.maxLifespan = Number.parseFloat(particlesControls.sliderLifespan.value);
+    }
+    // Speed and Force are read in the update loop
     // UI label updates are handled by the main script's event listeners calling updateAllValueDisplays
 }
 
-function handleParticleEmitterChange() {
-	// Check if currentAnimationType is defined globally (from script.js)
-    if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "particles") return;
-	// Emitter shape or size change requires recreating particles
-	console.log("Particle emitter changed, recreating...");
-	cleanupParticleAnimation();
-	setupParticleAnimation();
-	// setupParticleAnimation calls updateAllValueDisplays at the end
-}
 
 // --- Animation Update ---
+function updateParticleAnimation(deltaTime, elapsedTime) {
+	if (!animationObjects.particleSystem || !animationObjects.positions || !animationObjects.velocities || !animationObjects.lifespans || !simplex) {
+        // if (!simplex) console.warn("Simplex noise not available for particle update."); // Warn if simplex missing
+        return; // Exit if essential objects or simplex are missing
+    }
 
-function updateParticlesAnimation(deltaTime, elapsedTime) {
-	if (!animationObjects.particleSystem || !SimplexNoise) return; // Ensure noise library is loaded
+    // Ensure deltaTime is valid, provide fallback
+    const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? Math.min(deltaTime, 0.05) : (1/60);
 
 	const positions = animationObjects.positions;
 	const velocities = animationObjects.velocities;
@@ -318,31 +325,42 @@ function updateParticlesAnimation(deltaTime, elapsedTime) {
     const sizes = animationObjects.sizes; // Get sizes array
 	const particleCount = animationObjects.particleCount;
 	const geometry = animationObjects.particlesGeometry;
-	const material = animationObjects.particlesMaterial; // Get material reference
+    const material = animationObjects.particlesMaterial; // Get material
 
-	// Get current parameters
-	const speed = Number.parseFloat(particlesControls.sliderSpeed?.value || 1.0); // Add default
-	const forceType = particlesControls.selectForceType?.value || 'none'; // Add default
-	const forceStrength = Number.parseFloat(particlesControls.sliderForceStrength?.value || 0.1); // Add default
-	const maxLifespan = animationObjects.maxLifespan; // Use stored max lifespan
-	const emitterShape = particlesControls.selectEmitterShape?.value || 'box'; // Add default
-	const emitterSize = Number.parseFloat(particlesControls.sliderEmitterSize?.value || 5.0); // Add default
-    const baseSize = Number.parseFloat(particlesControls.sliderSize?.value || 1.0); // Get base size
+	// Get current control values
+	const speedMultiplier = Number.parseFloat(particlesControls.sliderSpeed?.value || 1.0);
+	const forceType = particlesControls.selectForceType?.value || 'none';
+	const forceStrength = Number.parseFloat(particlesControls.sliderForceStrength?.value || 0.1);
+    const emitterShape = particlesControls.selectEmitterShape?.value || 'box';
+	const emitterSize = Number.parseFloat(particlesControls.sliderEmitterSize?.value || 5.0);
+    const baseSize = Number.parseFloat(particlesControls.sliderSize?.value || 1.0);
+    const maxLifespan = animationObjects.maxLifespan; // Use stored max lifespan
 
-	// Flow field parameters (only used if forceType is 'flow')
-	const flowTime = elapsedTime * 0.1; // Slower time evolution for flow field
-	const flowScale = 0.5; // Spatial scale of the flow field noise
+    // Create alpha attribute if it doesn't exist, or get it
+    let alphaAttribute = geometry.getAttribute('alpha');
+    if (!alphaAttribute || alphaAttribute.array.length !== particleCount) { // Check length too
+        console.log("Creating/Resizing alpha attribute");
+        const alphas = new Float32Array(particleCount);
+        // Initialize if creating new
+        if (!alphaAttribute) {
+             for (let i = 0; i < particleCount; i++) alphas[i] = 1.0;
+        } else {
+            // If resizing, copy old data? Or just re-initialize? Re-initialize is simpler.
+             for (let i = 0; i < particleCount; i++) alphas[i] = 1.0;
+        }
+        alphaAttribute = new THREE.BufferAttribute(alphas, 1);
+        geometry.setAttribute('alpha', alphaAttribute);
+    }
+    const alphas = alphaAttribute.array; // Get the array reference
 
-	const tempColor = new THREE.Color(); // Reuse color object
-
-	// Update each particle
+	// --- Update loop ---
 	for (let i = 0; i < particleCount; i++) {
 		const i3 = i * 3;
 
 		// Decrease lifespan
-		lifespans[i] -= deltaTime;
+		lifespans[i] -= dt;
 
-		// If particle has died, respawn it
+		// Check if particle needs reset
 		if (lifespans[i] <= 0) {
 			resetParticle(
 				i,
@@ -351,142 +369,94 @@ function updateParticlesAnimation(deltaTime, elapsedTime) {
 				lifespans,
 				initialLifespans,
 				colors,
-                sizes, // Pass sizes
+                sizes,
 				emitterShape,
 				emitterSize,
 				maxLifespan,
-                baseSize // Pass base size
+                baseSize
 			);
+            alphas[i] = 1.0; // Reset alpha on respawn
 		} else {
 			// Apply forces
 			let forceX = 0;
-            let forceY = 0;
-            let forceZ = 0;
-            const posX = positions[i3];
-            const posY = positions[i3 + 1];
-            const posZ = positions[i3 + 2];
+			let forceY = 0;
+			let forceZ = 0;
 
-			if (forceType === "gravity") {
-				forceY = -forceStrength; // Simple gravity pulls down
-			} else if (forceType === "vortex") {
-				// const posX = positions[i3]; // Already defined above
-				// const posZ = positions[i3 + 2]; // Already defined above
-				const distSq = posX * posX + posZ * posZ;
-				if (distSq > 0.01) {
-					const dist = Math.sqrt(distSq);
-					// Tangential force for swirl
-					forceX = (-posZ / dist) * forceStrength;
-					forceZ = (posX / dist) * forceStrength;
-					// Optional: Add inward/outward force (pull towards center slightly)
-					forceX -= (posX / dist) * forceStrength * 0.1;
-					forceZ -= (posZ / dist) * forceStrength * 0.1;
+			switch (forceType) {
+				case "gravity":
+					forceY = -forceStrength * 9.8; // Simple gravity
+					break;
+				case "vortex": {
+					// Vortex around Y axis
+					const radius = Math.sqrt(positions[i3] ** 2 + positions[i3 + 2] ** 2);
+					if (radius > 0.1) { // Avoid singularity at center
+						const angle = Math.atan2(positions[i3 + 2], positions[i3]);
+						const speed = forceStrength / radius; // Speed decreases with distance
+						forceX = -Math.sin(angle) * speed;
+						forceZ = Math.cos(angle) * speed;
+						// Optional pull towards center
+						// forceX -= positions[i3] * forceStrength * 0.1;
+						// forceZ -= positions[i3 + 2] * forceStrength * 0.1;
+					}
+					break;
 				}
-			} else if (forceType === "flow") {
-				// Added Flow Field
-				// Use 3D simplex noise to get a vector field
-				// Ensure SimplexNoise.noise3D exists and is used correctly
-				const noiseX = SimplexNoise.noise3D(
-					posX * flowScale,
-					posY * flowScale,
-					flowTime,
-				);
-				const noiseY = SimplexNoise.noise3D(
-					posY * flowScale + 100, // Offset inputs for different noise values
-					posZ * flowScale,
-					flowTime,
-				);
-				const noiseZ = SimplexNoise.noise3D(
-					posZ * flowScale,
-					posX * flowScale - 100,
-					flowTime,
-				);
-
-				forceX = noiseX * forceStrength;
-				forceY = noiseY * forceStrength;
-				forceZ = noiseZ * forceStrength;
-			} else if (forceType === "attract") {
-				// Simple attraction to origin
-				// const posX = positions[i3]; // Already defined above
-				// const posY = positions[i3 + 1]; // Already defined above
-				// const posZ = positions[i3 + 2]; // Already defined above
-				const distSq = posX * posX + posY * posY + posZ * posZ;
-				if (distSq > 0.01) {
-					const dist = Math.sqrt(distSq);
-                    const strengthFactor = 1.0; // Constant force for now
-					forceX = (-posX / dist) * forceStrength * strengthFactor;
-					forceY = (-posY / dist) * forceStrength * strengthFactor;
-					forceZ = (-posZ / dist) * forceStrength * strengthFactor;
+				case "noise": {
+					// Simplex noise force field
+					const noiseScale = 0.5; // How detailed the noise field is
+					const timeScale = 0.1; // How fast the noise field evolves
+					const noiseX = simplex.noise3D(
+						positions[i3] * noiseScale,
+						positions[i3 + 1] * noiseScale,
+						positions[i3 + 2] * noiseScale + elapsedTime * timeScale
+					);
+					const noiseY = simplex.noise3D(
+						positions[i3 + 1] * noiseScale + 100.0, // Offset inputs slightly
+						positions[i3 + 2] * noiseScale,
+						positions[i3] * noiseScale + elapsedTime * timeScale
+					);
+					const noiseZ = simplex.noise3D(
+						positions[i3 + 2] * noiseScale + 200.0,
+						positions[i3] * noiseScale,
+						positions[i3 + 1] * noiseScale + elapsedTime * timeScale
+					);
+					forceX = noiseX * forceStrength;
+					forceY = noiseY * forceStrength;
+					forceZ = noiseZ * forceStrength;
+					break;
 				}
-			} else if (forceType === "repel") {
-				// Simple repulsion from origin
-				// const posX = positions[i3]; // Already defined above
-				// const posY = positions[i3 + 1]; // Already defined above
-				// const posZ = positions[i3 + 2]; // Already defined above
-				const distSq = posX * posX + posY * posY + posZ * posZ;
-				if (distSq > 0.01) {
-					const dist = Math.sqrt(distSq);
-					// Force decreases with distance (simple inverse distance)
-					const strengthFactor = 1.0 / (dist + 0.5); // Avoid division by zero, adjust falloff
-					forceX = (posX / dist) * forceStrength * strengthFactor;
-					forceY = (posY / dist) * forceStrength * strengthFactor;
-					forceZ = (posZ / dist) * forceStrength * strengthFactor;
-				}
+                // default: 'none' - no force applied
 			}
 
-			// Update velocity using Euler integration (Velocity Verlet might be more stable)
-			velocities[i3] += forceX * deltaTime;
-			velocities[i3 + 1] += forceY * deltaTime;
-			velocities[i3 + 2] += forceZ * deltaTime;
-
-			// Optional: Add damping
-            const damping = 0.98; // Adjust damping factor
-            velocities[i3] *= damping;
-            velocities[i3 + 1] *= damping;
-            velocities[i3 + 2] *= damping;
-
-			// Optional: Clamp velocity magnitude
-			// const maxVel = 5.0;
-			// const velSq = velocities[i3]**2 + velocities[i3+1]**2 + velocities[i3+2]**2;
-			// if (velSq > maxVel*maxVel) {
-			//     const velMag = Math.sqrt(velSq);
-			//     velocities[i3] = (velocities[i3] / velMag) * maxVel;
-            //     velocities[i3+1] = (velocities[i3+1] / velMag) * maxVel;
-            //     velocities[i3+2] = (velocities[i3+2] / velMag) * maxVel;
-			// }
+			// Update velocity (Euler integration)
+			velocities[i3] += forceX * dt;
+			velocities[i3 + 1] += forceY * dt;
+			velocities[i3 + 2] += forceZ * dt;
 
 			// Update position
-			positions[i3] += velocities[i3] * speed * deltaTime;
-			positions[i3 + 1] += velocities[i3 + 1] * speed * deltaTime;
-			positions[i3 + 2] += velocities[i3 + 2] * speed * deltaTime;
+			positions[i3] += velocities[i3] * dt * speedMultiplier;
+			positions[i3 + 1] += velocities[i3 + 1] * dt * speedMultiplier;
+			positions[i3 + 2] += velocities[i3 + 2] * dt * speedMultiplier;
 
-			// --- Update Color and Size over Lifespan ---
-			const lifeRatio = Math.max(0, lifespans[i] / initialLifespans[i]); // Clamp ratio 0-1
-
-            // Fade color towards dark blue/black
-			const fadeTargetColor = new THREE.Color(0x000005); // Very dark blue target
-			tempColor.setRGB(colors[i3], colors[i3 + 1], colors[i3 + 2]); // Get current color
-            // Lerp based on 1 - lifeRatio (so it fades *towards* target as life decreases)
-			tempColor.lerp(fadeTargetColor, 1.0 - lifeRatio);
-			colors[i3] = tempColor.r;
-			colors[i3 + 1] = tempColor.g;
-			colors[i3 + 2] = tempColor.b;
-
-            // Fade size (e.g., shrink over time)
-            // Use smoothstep for nicer fade: t * t * (3.0 - 2.0 * t) where t is lifeRatio
-            const smoothLifeRatio = lifeRatio * lifeRatio * (3.0 - 2.0 * lifeRatio);
-            sizes[i] = baseSize * smoothLifeRatio * (0.5 + Math.random()); // Apply base size and fade
-
-            // Update material opacity (Requires passing lifeRatio to fragment shader)
-            // This needs another attribute or careful uniform management.
-            // For now, alpha is handled in the fragment shader (currently static).
+            // Update alpha based on lifespan (fade out)
+            const lifespanLeft = Math.max(0, lifespans[i] / initialLifespans[i]); // Normalized 0-1
+            // Apply smoothstep for smoother fade
+            alphas[i] = smoothstep(0.0, 0.5, lifespanLeft); // Fade out during first half of life remaining
 		}
 	}
 
-	// Mark attributes for update
+	// Mark attributes as needing update
 	geometry.attributes.position.needsUpdate = true;
-	geometry.attributes.color.needsUpdate = true; // Mark colors for update
-    geometry.attributes.particleSize.needsUpdate = true; // Mark the correct size attribute
+	geometry.attributes.color.needsUpdate = true;
+    geometry.attributes.particleSize.needsUpdate = true; // Size might change on reset
+    geometry.attributes.alpha.needsUpdate = true; // Alpha changes every frame
 }
+
+// Helper smoothstep function (already in other files, maybe move to a global util?)
+function smoothstep(edge0, edge1, x) {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+}
+
 
 // --- Randomization ---
 
@@ -494,7 +464,6 @@ function randomizeParticleParameters() {
 	console.log("Randomizing Particle parameters...");
 	let needsRestart = false;
 
-	// Randomize sliders
 	const sliders = [
 		particlesControls.sliderCount,
 		particlesControls.sliderSize,
@@ -503,17 +472,15 @@ function randomizeParticleParameters() {
 		particlesControls.sliderEmitterSize,
 		particlesControls.sliderForceStrength,
 	];
+
 	for (const slider of sliders) {
         if (!slider) continue;
 		const min = Number.parseFloat(slider.min);
 		const max = Number.parseFloat(slider.max);
-		const step = Number.parseFloat(slider.step) || (slider.id.includes('count') ? 1 : 0.1); // Step 1 for count, 0.1 otherwise
+		const step = Number.parseFloat(slider.step) || (slider.id.includes('count') ? 1 : 0.1); // Step 1 for count
 		const range = max - min;
-		// Ensure calculations handle potential floating point inaccuracies
         const randomValue = min + Math.random() * range;
-        // Round to the nearest step
         const steppedValue = Math.round(randomValue / step) * step;
-        // Clamp to min/max and fix precision
         const precision = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
         const newValue = Math.min(max, Math.max(min, steppedValue)).toFixed(precision);
 

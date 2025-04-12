@@ -1,13 +1,173 @@
 /* Animation styling */
-body { 
-    font-family: 'Inter', sans-serif; 
-    background-color: #1a202c; /* Tailwind gray-900 */
-    color: #e2e8f0; /* Tailwind gray-200 */
+
+/* Define theme variables globally for UI elements OUTSIDE the output container */
+:root {
+    /* Default Dark Theme Variables */
+    --bg-primary: #1a202c; /* gray-900 */
+    --bg-secondary: #2d3748; /* gray-800 */
+    --bg-tertiary: #4a5568; /* gray-600 */
+    /* --bg-output: #0d1117; */ /* Moved to container-specific */
+    --text-primary: #e2e8f0; /* gray-200 */
+    --text-secondary: #a0aec0; /* gray-400 */
+    --text-label: #cbd5e0; /* gray-300 */
+    --border-primary: #4a5568; /* gray-600 */
+    --border-secondary: #30363d; /* gray-700 */
+    --accent-primary: #63b3ed; /* blue-400 */
+    --accent-secondary: #4299e1; /* blue-500 */
+    --accent-danger: #e53e3e; /* red-600 */
+    --accent-danger-hover: #c53030; /* red-700 */
+    --shadow-color: rgba(99, 179, 237, 0.5); /* blue-400 glow */
+    /* --output-text-color: #e2e8f0; */ /* Moved to container-specific */
+
+    /* Default output colors (can be overridden by theme editor or theme CSS) */
+    --bg-output: #0d1117;
+    --output-text-color: #e2e8f0;
+}
+
+/* Apply theme variables to the html element for global scope */
+html[data-theme="dark"] { /* Default */
+    --bg-primary: #1a202c; --bg-secondary: #2d3748; --bg-tertiary: #4a5568;
+    --text-primary: #e2e8f0; --text-secondary: #a0aec0; --text-label: #cbd5e0;
+    --border-primary: #4a5568; --border-secondary: #30363d;
+    --accent-primary: #63b3ed; --accent-secondary: #4299e1;
+    --accent-danger: #e53e3e; --accent-danger-hover: #c53030;
+    --shadow-color: rgba(99, 179, 237, 0.5);
+}
+html[data-theme="light"] {
+    --bg-primary: #edf2f7; --bg-secondary: #ffffff; --bg-tertiary: #e2e8f0;
+    --text-primary: #2d3748; --text-secondary: #718096; --text-label: #4a5568;
+    --border-primary: #cbd5e0; --border-secondary: #e2e8f0;
+    --accent-primary: #4299e1; --accent-secondary: #3182ce;
+    --accent-danger: #e53e3e; --accent-danger-hover: #c53030;
+    --shadow-color: rgba(66, 153, 225, 0.5);
+}
+html[data-theme="matrix"] {
+    --bg-primary: #001100; --bg-secondary: #002200; --bg-tertiary: #003300;
+    --text-primary: #00ff00; --text-secondary: #00cc00; --text-label: #00dd00;
+    --border-primary: #004400; --border-secondary: #003300;
+    --accent-primary: #00ff00; --accent-secondary: #00dd00;
+    --accent-danger: #ff0000; --accent-danger-hover: #cc0000;
+    --shadow-color: rgba(0, 255, 0, 0.6);
+}
+html[data-theme="solarized"] {
+    --bg-primary: #002b36; --bg-secondary: #073642; --bg-tertiary: #586e75;
+    --text-primary: #eee8d5; --text-secondary: #93a1a1; --text-label: #b58900;
+    --border-primary: #586e75; --border-secondary: #073642;
+    --accent-primary: #268bd2; --accent-secondary: #2aa198;
+    --accent-danger: #dc322f; --accent-danger-hover: #cb4b16;
+    --shadow-color: rgba(38, 139, 210, 0.5);
+}
+html[data-theme="solarized-light"] {
+    --bg-primary: #fdf6e3; --bg-secondary: #eee8d5; --bg-tertiary: #93a1a1;
+    --text-primary: #586e75; --text-secondary: #657b83; --text-label: #073642;
+    --border-primary: #eee8d5; --border-secondary: #fdf6e3;
+    --accent-primary: #268bd2; --accent-secondary: #2aa198;
+    --accent-danger: #dc322f; --accent-danger-hover: #cb4b16;
+    --shadow-color: rgba(181, 137, 0, 0.4);
+}
+html[data-theme="monokai"] {
+    --bg-primary: #272822; --bg-secondary: #383830; --bg-tertiary: #49483e;
+    --text-primary: #f8f8f2; --text-secondary: #a6e22e; --text-label: #e6db74;
+    --border-primary: #75715e; --border-secondary: #49483e;
+    --accent-primary: #ae81ff; --accent-secondary: #66d9ef;
+    --accent-danger: #f92672; --accent-danger-hover: #fd5ff0;
+    --shadow-color: rgba(166, 226, 46, 0.5);
+}
+html[data-theme="dracula"] {
+    --bg-primary: #282a36; --bg-secondary: #3a3c4e; --bg-tertiary: #44475a;
+    --text-primary: #f8f8f2; --text-secondary: #bd93f9; --text-label: #8be9fd;
+    --border-primary: #6272a4; --border-secondary: #44475a;
+    --accent-primary: #ff79c6; --accent-secondary: #50fa7b;
+    --accent-danger: #ff5555; --accent-danger-hover: #ff6e6e;
+    --shadow-color: rgba(255, 121, 198, 0.5);
+}
+html[data-theme="nord"] {
+    --bg-primary: #2e3440; --bg-secondary: #3b4252; --bg-tertiary: #434c5e;
+    --text-primary: #eceff4; --text-secondary: #d8dee9; --text-label: #88c0d0;
+    --border-primary: #4c566a; --border-secondary: #434c5e;
+    --accent-primary: #81a1c1; --accent-secondary: #5e81ac;
+    --accent-danger: #bf616a; --accent-danger-hover: #d08770;
+    --shadow-color: rgba(136, 192, 208, 0.5);
+}
+html[data-theme="gruvbox-dark"] {
+    --bg-primary: #282828; --bg-secondary: #3c3836; --bg-tertiary: #504945;
+    --text-primary: #ebdbb2; --text-secondary: #bdae93; --text-label: #fe8019;
+    --border-primary: #665c54; --border-secondary: #504945;
+    --accent-primary: #fabd2f; --accent-secondary: #83a598;
+    --accent-danger: #fb4934; --accent-danger-hover: #cc241d;
+    --shadow-color: rgba(250, 189, 47, 0.5);
+}
+html[data-theme="gruvbox-light"] {
+    --bg-primary: #fbf1c7; --bg-secondary: #ebdbb2; --bg-tertiary: #d5c4a1;
+    --text-primary: #3c3836; --text-secondary: #504945; --text-label: #7c6f64;
+    --border-primary: #bdae93; --border-secondary: #d5c4a1;
+    --accent-primary: #d65d0e; --accent-secondary: #458588;
+    --accent-danger: #cc241d; --accent-danger-hover: #9d0006;
+    --shadow-color: rgba(69, 133, 136, 0.5);
+}
+html[data-theme="one-dark"] {
+    --bg-primary: #282c34; --bg-secondary: #353b45; --bg-tertiary: #3e4451;
+    --text-primary: #abb2bf; --text-secondary: #5c6370; --text-label: #e5c07b;
+    --border-primary: #3e4451; --border-secondary: #353b45;
+    --accent-primary: #61afef; --accent-secondary: #c678dd;
+    --accent-danger: #e06c75; --accent-danger-hover: #be5046;
+    --shadow-color: rgba(97, 175, 239, 0.5);
+}
+html[data-theme="cobalt2"] {
+    --bg-primary: #002240; --bg-secondary: #003355; --bg-tertiary: #004466;
+    --text-primary: #ffffff; --text-secondary: #ffc600; --text-label: #ffee80;
+    --border-primary: #005580; --border-secondary: #004466;
+    --accent-primary: #ff9d00; --accent-secondary: #ffc600;
+    --accent-danger: #ff0000; --accent-danger-hover: #cc0000;
+    --shadow-color: rgba(255, 198, 0, 0.6);
+}
+html[data-theme="synthwave"] {
+    --bg-primary: #2a2139; --bg-secondary: #34294f; --bg-tertiary: #403161;
+    --text-primary: #ffffff; --text-secondary: #ffcc00; --text-label: #72f1b8;
+    --border-primary: #5d4981; --border-secondary: #403161;
+    --accent-primary: #f92aad; --accent-secondary: #72f1b8;
+    --accent-danger: #fe4450; --accent-danger-hover: #ff79c6;
+    --shadow-color: rgba(249, 42, 173, 0.6);
+}
+html[data-theme="oceanic-next"] {
+    --bg-primary: #1b2b34; --bg-secondary: #2a3b43; --bg-tertiary: #344c58;
+    --text-primary: #cdd3de; --text-secondary: #65737e; --text-label: #c594c5;
+    --border-primary: #4f5b66; --border-secondary: #344c58;
+    --accent-primary: #6699cc; --accent-secondary: #99c794;
+    --accent-danger: #ec5f67; --accent-danger-hover: #f99157;
+    --shadow-color: rgba(102, 153, 204, 0.5);
+}
+
+
+/* Apply specific output colors based on theme */
+/* These rules target the container and use the theme's specific output colors */
+html[data-theme="dark"] #ascii-output-container { --bg-output: #0d1117; --output-text-color: #e2e8f0; }
+html[data-theme="light"] #ascii-output-container { --bg-output: #f7fafc; --output-text-color: #2d3748; }
+html[data-theme="matrix"] #ascii-output-container { --bg-output: #000000; --output-text-color: #00ff00; }
+html[data-theme="solarized"] #ascii-output-container { --bg-output: #002b36; --output-text-color: #839496; }
+html[data-theme="solarized-light"] #ascii-output-container { --bg-output: #fdf6e3; --output-text-color: #657b83; }
+html[data-theme="monokai"] #ascii-output-container { --bg-output: #272822; --output-text-color: #f8f8f2; }
+html[data-theme="dracula"] #ascii-output-container { --bg-output: #282a36; --output-text-color: #f8f8f2; }
+html[data-theme="nord"] #ascii-output-container { --bg-output: #2e3440; --output-text-color: #eceff4; }
+html[data-theme="gruvbox-dark"] #ascii-output-container { --bg-output: #282828; --output-text-color: #ebdbb2; }
+html[data-theme="gruvbox-light"] #ascii-output-container { --bg-output: #fbf1c7; --output-text-color: #3c3836; }
+html[data-theme="one-dark"] #ascii-output-container { --bg-output: #282c34; --output-text-color: #abb2bf; }
+html[data-theme="cobalt2"] #ascii-output-container { --bg-output: #002240; --output-text-color: #ffffff; }
+html[data-theme="synthwave"] #ascii-output-container { --bg-output: #2a2139; --output-text-color: #f92aad; }
+html[data-theme="oceanic-next"] #ascii-output-container { --bg-output: #1b2b34; --output-text-color: #cdd3de; }
+
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-primary); /* Use variable */
+    color: var(--text-primary); /* Use variable */
+    /* Remove global transition */
+    /* transition: background-color 0.3s, color 0.3s; */
 }
 
 /* Add title shadow style */
 .title-shadow {
-    text-shadow: 0 0 10px rgba(147, 161, 253, 0.5); /* Tailwind blue-300 glow */
+    text-shadow: 0 0 10px var(--shadow-color); /* Use variable */
 }
 
 /* Use the correct ID from index.html */
@@ -19,27 +179,28 @@ body {
     font-size: 10px; /* Initial size, script.js will adjust */
     overflow: hidden;
     text-align: center;
-    /* background-color: #0d1117; */ /* Background is on the container */
+    /* background-color: var(--bg-output); */ /* Background is on the container */
     /* padding: 1rem; */ /* Padding is on the container */
     /* border-radius: 0.5rem; */ /* Border/Radius is on the container */
-    /* border: 1px solid #30363d; */ /* Border is on the container */
+    /* border: 1px solid var(--border-secondary); */ /* Border is on the container */
     /* aspect-ratio: 16 / 9; */ /* Aspect ratio managed by container/JS */
     /* width: 100%; */ /* Set by absolute positioning */
     /* max-width: 100%; */ /* Set by absolute positioning */
     /* height: auto; */ /* Set by absolute positioning */
     box-sizing: border-box;
     /* min-height: 50px; */ /* Container manages min-height */
-    color: #e2e8f0; /* Ensure text color is visible */
+    color: var(--output-text-color); /* Use variable defined in container */
     position: absolute; /* Keep absolute positioning */
     inset: 0; /* Keep inset */
     width: 100%; /* Keep width */
     height: 100%; /* Keep height */
+    transition: color 0.3s; /* Add transition for text color */
 }
 
 #ascii-output-container { /* Style the container */
-    background-color: #0d1117; /* Darker background for contrast */
+    background-color: var(--bg-output); /* Use variable defined here or by theme rule */
     /* min-height: 200px; */ /* Replaced by aspect-ratio */
-    border: 1px solid #30363d; /* Tailwind gray-700 */
+    border: 1px solid var(--border-secondary); /* Use variable */
     border-radius: 0.5rem;
     padding: 1rem; /* Add padding here */
     position: relative; /* Ensure this is present for absolute child positioning */
@@ -50,124 +211,227 @@ body {
     align-items: center; /* Center content vertically if needed */
     justify-content: center; /* Center content horizontally if needed */
     overflow: hidden; /* Ensure content doesn't spill out */
+    transition: background-color 0.3s, border-color 0.3s; /* Smooth theme transition */
 }
 
-input[type="range"] { 
-    -webkit-appearance: none; 
-    appearance: none; 
-    width: 100%; 
-    height: 8px; 
-    background: #4a5568; /* Tailwind gray-600 */
-    border-radius: 5px; 
-    outline: none; 
-    opacity: 0.7; 
-    transition: opacity .2s; 
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: var(--bg-tertiary); /* Use variable */
+    border-radius: 5px;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s, background-color 0.3s; /* Smooth theme transition */
 }
 
-input[type="range"]:hover { 
-    opacity: 1; 
+input[type="range"]:hover {
+    opacity: 1;
 }
 
-input[type="range"]::-webkit-slider-thumb { 
-    -webkit-appearance: none; 
-    appearance: none; 
-    width: 20px; 
-    height: 20px; 
-    background: #63b3ed; /* Tailwind blue-400 */
-    border-radius: 50%; 
-    cursor: pointer; 
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-primary); /* Use variable */
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.3s; /* Smooth theme transition */
 }
 
-input[type="range"]::-moz-range-thumb { 
-    width: 20px; 
-    height: 20px; 
-    background: #63b3ed; /* Tailwind blue-400 */
-    border-radius: 50%; 
-    cursor: pointer; 
-    border: none; 
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--accent-primary); /* Use variable */
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.3s; /* Smooth theme transition */
 }
 
-input[type="checkbox"] { 
-    appearance: none; 
-    background-color: #4a5568; /* Tailwind gray-600 */
-    width: 1.25em; 
-    height: 1.25em; 
-    border: 1px solid #718096; /* Tailwind gray-500 */
-    border-radius: 0.25rem; 
-    display: inline-block; 
-    position: relative; 
-    cursor: pointer; 
-    margin-right: 0.5em; 
-    vertical-align: middle; 
+input[type="checkbox"] {
+    appearance: none;
+    background-color: var(--bg-tertiary); /* Use variable */
+    width: 1.25em;
+    height: 1.25em;
+    border: 1px solid var(--border-primary); /* Use variable */
+    border-radius: 0.25rem;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    margin-right: 0.5em;
+    vertical-align: middle;
+    transition: background-color 0.3s, border-color 0.3s; /* Smooth theme transition */
 }
 
-input[type="checkbox"]:checked { 
-    background-color: #63b3ed; /* Tailwind blue-400 */
-    border-color: #63b3ed; /* Tailwind blue-400 */
+input[type="checkbox"]:checked {
+    background-color: var(--accent-primary); /* Use variable */
+    border-color: var(--accent-primary); /* Use variable */
 }
 
-input[type="checkbox"]:checked::after { 
-    content: '✔'; 
-    font-size: 0.9em; 
-    color: #1a202c; /* Tailwind gray-900 */
-    position: absolute; 
-    left: 50%; 
-    top: 50%; 
-    transform: translate(-50%, -50%); 
-    line-height: 1; 
+input[type="checkbox"]:checked::after {
+    content: '✔';
+    font-size: 0.9em;
+    color: var(--bg-primary); /* Use variable (background color for contrast) */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    line-height: 1;
+    transition: color 0.3s; /* Smooth theme transition */
 }
 
-label { 
-    display: block; 
-    margin-bottom: 0.25rem; 
-    font-size: 0.875rem; 
-    color: #a0aec0; /* Tailwind gray-400 */
+label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary); /* Use variable */
+    transition: color 0.3s; /* Smooth theme transition */
 }
 
-label.inline-label { 
-    display: inline-block; 
-    margin-bottom: 0; 
-    vertical-align: middle; 
-    cursor: pointer; 
+label.inline-label {
+    display: inline-block;
+    margin-bottom: 0;
+    vertical-align: middle;
+    cursor: pointer;
 }
 
-select, button, input[type="text"] { /* Added input[type="text"] */
-    background-color: #2d3748; /* Tailwind gray-800 */
-    border: 1px solid #4a5568; /* Tailwind gray-600 */
-    border-radius: 0.375rem; 
-    padding: 0.5rem; 
-    width: 100%; 
-    color: #e2e8f0; /* Tailwind gray-200 */
-    transition: background-color 0.2s; 
+select, button, input[type="text"], input[type="color"] { /* Added input[type="color"] */
+    background-color: var(--bg-secondary); /* Use variable */
+    border: 1px solid var(--border-primary); /* Use variable */
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    width: 100%;
+    color: var(--text-primary); /* Use variable */
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Smooth theme transition */
     box-sizing: border-box; /* Ensure padding doesn't increase size */
 }
-
-button { 
-    cursor: pointer; 
-    text-align: center; 
-    font-weight: 500; 
+/* Specific styling for color input */
+input[type="color"] {
+    padding: 0.2rem; /* Adjust padding for color input */
+    height: 2.5rem; /* Match button height */
+    cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 0.25rem;
+}
+input[type="color"]::-moz-color-swatch {
+    border: none;
+    border-radius: 0.25rem;
 }
 
-button:hover { 
-    background-color: #4a5568; /* Tailwind gray-600 */
+
+button {
+    cursor: pointer;
+    text-align: center;
+    font-weight: 500;
+    background-color: var(--accent-secondary); /* Use accent color */
+    color: var(--bg-primary); /* Contrast text */
+    transition: background-color 0.2s, color 0.2s; /* Add transition */
 }
 
-.control-section { 
-    background-color: #2d3748; /* Tailwind gray-800 */
-    padding: 1rem; 
-    border-radius: 0.5rem; 
-    margin-bottom: 1rem; 
+button:hover {
+    background-color: var(--accent-primary); /* Lighten/change on hover */
 }
 
-.slider-label { 
-    color: #cbd5e0; /* Tailwind gray-300 */
-    font-weight: 500; 
+/* Style delete button specifically */
+#deletePresetButton {
+    background-color: var(--accent-danger);
+    color: var(--text-primary); /* Ensure text is readable */
+}
+#deletePresetButton:hover {
+    background-color: var(--accent-danger-hover);
 }
 
-.animation-controls { 
-    display: none; 
+/* Style recording button */
+#recordGifButton.recording {
+    background-color: var(--accent-danger);
+    color: var (--text-primary);
+}
+#recordGifButton.recording:hover {
+    background-color: var(--accent-danger-hover);
 }
 
-.animation-controls.active { 
-    display: block; 
+
+.control-section {
+    background-color: var(--bg-secondary); /* Use variable */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    transition: max-height 0.3s ease-out, background-color 0.3s; /* Smooth theme transition */
+    overflow: hidden; /* Hide content when collapsed */
+}
+
+.control-section-header {
+    /* Styles already applied via Tailwind */
+    margin-bottom: 0.75rem; /* Adjust spacing */
+    color: var(--text-primary); /* Use variable */
+    transition: color 0.3s; /* Smooth theme transition */
+}
+.control-section-header .toggle-icon {
+    color: var(--text-secondary); /* Use variable */
+    transition: color 0.3s, transform 0.3s ease-out; /* Smooth theme transition */
+}
+
+
+.control-section-content {
+    /* Styles applied via Tailwind */
+    transition: opacity 0.3s ease-out, max-height 0.3s ease-out; /* Smooth fade/slide */
+    max-height: 1000px; /* Allow space for content */
+    opacity: 1;
+}
+
+/* Collapsed state */
+.control-section.collapsed .control-section-content {
+    max-height: 0;
+    opacity: 0;
+    /* display: none; */ /* Using max-height and opacity for transition */
+    padding-top: 0; /* Remove padding when collapsed */
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    overflow: hidden; /* Ensure content is clipped */
+}
+
+.control-section.collapsed .control-section-header {
+    margin-bottom: 0; /* Remove bottom margin on header when collapsed */
+}
+
+.control-section.collapsed .toggle-icon {
+    transform: rotate(-90deg); /* Rotate arrow */
+}
+
+.toggle-icon {
+    transition: transform 0.3s ease-out;
+}
+
+.slider-label {
+    color: var(--text-label); /* Use variable */
+    font-weight: 500;
+    transition: color 0.3s; /* Smooth theme transition */
+}
+/* Span showing slider value */
+.slider-label + span {
+    color: var(--text-secondary); /* Use variable */
+    transition: color 0.3s; /* Smooth theme transition */
+}
+
+
+.animation-controls {
+    display: none;
+}
+
+.animation-controls.active {
+    display: block;
+}
+
+/* Ensure hidden class properly hides elements */
+.hidden {
+    display: none !important;
 }

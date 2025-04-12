@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>asciigen</title>
+    <title>ASCII Art Generator V2</title>
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -13,10 +13,10 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-gray-900 text-gray-200">
+<body class="bg-gray-900 text-gray-100 p-6">
 
-    <div class="container mx-auto p-4 max-w-7xl">
-        <h1 class="text-3xl font-bold text-center mb-6 text-blue-300 title-shadow">a s c i i g e n</h1>
+    <div class="container mx-auto max-w-7xl">
+        <h1 class="text-4xl font-bold text-center mb-8 title-shadow">Real-time ASCII Art Generator</h1>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -31,374 +31,129 @@
             <div class="lg:col-span-1 space-y-6">
 
                 <!-- General Controls Section -->
-                <div class="control-section">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">General Controls</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="animationType" class="block text-sm font-medium text-gray-400 mb-1">Animation Type:</label>
-                            <select id="animationType" name="animationType" class="w-full">
-                                <option value="lissajous" selected>Lissajous</option>
-                                <option value="torus">Torus</option>
-                                <option value="noise">Noise Field</option>
-                                <option value="particles">Particles</option>
-                                <option value="kaleidoscope">Kaleidoscope</option>
-                                <option value="morph">Shape Morph</option>
-                                <option value="metaballs">Metaballs</option>
-                            </select>
+                <div class="control-section collapsible">
+                    <h2 class="control-section-header text-xl font-semibold mb-3 text-gray-100 flex justify-between items-center cursor-pointer">
+                        <span>General Controls</span>
+                        <span class="toggle-icon text-gray-400 text-lg">▼</span>
+                    </h2>
+                    <div class="control-section-content">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="animation-type-select" class="block text-sm font-medium text-gray-400 mb-1">Animation:</label>
+                                <select id="animation-type-select" name="animation-type" class="w-full">
+                                    <option value="lissajous" selected>Lissajous</option>
+                                    <option value="torus">Torus</option>
+                                    <option value="noise">Noise</option>
+                                    <option value="particles">Particles</option>
+                                    <option value="kaleidoscope">Kaleidoscope</option>
+                                    <option value="morph">Shape Morph</option>
+                                    <option value="metaballs">Metaballs</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="theme-select" class="block text-sm font-medium text-gray-400 mb-1">UI Theme:</label>
+                                <select id="theme-select" name="theme" class="w-full">
+                                    <!-- Options populated by JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label for="resolution-slider" class="slider-label">ASCII Resolution:</label>
+                                <input type="range" id="resolution-slider" name="resolution" min="0.1" max="1.0" value="0.25" step="0.01">
+                                <span class="text-sm text-gray-400"><span id="resolution-value">0.25</span></span>
+                            </div>
+                            <div>
+                                <label for="charset-select" class="block text-sm font-medium text-gray-400 mb-1">Character Set:</label>
+                                <select id="charset-select" name="charset" class="w-full">
+                                    <option value="dense" selected>Dense</option>
+                                    <option value="simple">Simple</option>
+                                    <option value="blocks">Blocks</option>
+                                    <option value="binary">Binary</option>
+                                    <option value="slashes">Slashes</option>
+                                    <option value="dots">Dots</option>
+                                    <option value="complex">Complex</option>
+                                    <option value="shade">Shade</option>
+                                    <option value="gradient">Gradient</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="brightness-slider" class="slider-label">Brightness:</label>
+                                <input type="range" id="brightness-slider" name="brightness" min="0.0" max="2.0" value="1.0" step="0.05">
+                                <span class="text-sm text-gray-400"><span id="brightness-value">1.00</span></span>
+                            </div>
+                            <div>
+                                <label for="contrast-slider" class="slider-label">Contrast:</label>
+                                <input type="range" id="contrast-slider" name="contrast" min="0.1" max="5.0" value="1.0" step="0.1">
+                                <span class="text-sm text-gray-400"><span id="contrast-value">1.0</span></span>
+                            </div>
+                            <div>
+                                <label for="zoom-slider" class="slider-label">Camera Zoom:</label>
+                                <input type="range" id="zoom-slider" name="zoom" min="1" max="50" value="15" step="1">
+                                <span class="text-sm text-gray-400"><span id="zoom-value">15</span></span>
+                            </div>
+                            <div class="flex items-center sm:col-span-2">
+                                <input type="checkbox" id="invert-checkbox" name="invert">
+                                <label for="invert-checkbox" class="inline-label">Invert Colors</label>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label for="renderTargetResolution" class="slider-label">Render Quality:</label>
+                                <input type="range" id="renderTargetResolution" name="renderTargetResolution" min="0.1" max="1.5" value="1.0" step="0.05">
+                                <span class="text-sm text-gray-400"><span id="renderTargetResolutionValue">1.00</span></span>
+                            </div>
+                            <div class="sm:col-span-2 grid grid-cols-2 gap-4">
+                                <button id="pausePlayButton" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded">Pause</button>
+                                <button id="randomizeButton" class="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded">Randomize</button>
+                                <button id="recordGifButton" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded col-span-2">Record GIF (5s)</button>
+                            </div>
                         </div>
-                        <div>
-                            <label for="resolution-slider" class="slider-label">Resolution (Width):</label>
-                            <input type="range" id="resolution-slider" name="resolution" min="40" max="240" value="120" step="10">
-                            <span class="text-sm text-gray-400"><span id="resolution-value">120</span> chars</span>
-                        </div>
-                        <div>
-                            <label for="charset-select" class="block text-sm font-medium text-gray-400 mb-1">Character Set:</label>
-                            <select id="charset-select" name="charset" class="w-full">
-                                <option value="dense">Dense</option>
-                                <option value="standard">Standard</option>
-                                <option value="minimal">Minimal</option>
-                                <option value="blocks">Blocks</option>
-                                <option value="binary">Binary</option>
-                                <option value="dots">Dots</option>
-                                <option value="complex">Complex</option>
-                                <option value="shade">Shade</option>
-                                <option value="gradient">Gradient</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="brightness-slider" class="slider-label">Brightness:</label>
-                            <input type="range" id="brightness-slider" name="brightness" min="0.1" max="2.0" value="1.0" step="0.05">
-                            <span class="text-sm text-gray-400"><span id="brightness-value">1.00</span></span>
-                        </div>
-                        <div>
-                            <label for="contrast-slider" class="slider-label">Contrast:</label>
-                            <input type="range" id="contrast-slider" name="contrast" min="0.1" max="5.0" value="1.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="contrast-value">1.0</span></span>
-                        </div>
-                        <div>
-                            <label for="zoom-slider" class="slider-label">Camera Zoom:</label>
-                            <input type="range" id="zoom-slider" name="zoom" min="1" max="50" value="15" step="1">
-                            <span class="text-sm text-gray-400"><span id="zoom-value">15</span></span>
-                        </div>
-                        <div class="flex items-center sm:col-span-2">
-                            <input type="checkbox" id="invert-checkbox" name="invert">
-                            <label for="invert-checkbox" class="inline-label">Invert Colors</label>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label for="renderTargetResolution" class="slider-label">Render Quality:</label>
-                            <span class="text-sm text-gray-400"><span id="renderTargetResolutionValue">1.00</span></span>
-                            <input type="range" id="renderTargetResolution" min="0.1" max="1.5" step="0.05" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg dark:bg-gray-700">
-                        </div>
-                        <div class="mt-4 grid grid-cols-2 gap-2 sm:col-span-2">
-                            <!-- Ensure button IDs match script.js -->
-                            <button id="pausePlayButton">Pause</button>
-                            <button id="randomizeButton">Randomize</button>
-                            <button id="recordGifButton" class="col-span-2">Record GIF (5s)</button> <!-- Added GIF Button -->
+                    </div>
+                </div>
+
+                <!-- Theme Editor Section -->
+                <div id="theme-editor-controls" class="control-section collapsible collapsed">
+                    <h2 class="control-section-header text-xl font-semibold mb-3 text-gray-100 flex justify-between items-center cursor-pointer">
+                        <span>Theme Editor</span>
+                        <span class="toggle-icon text-gray-400 text-lg">▼</span>
+                    </h2>
+                    <div class="control-section-content">
+                        <p class="text-sm text-gray-400 mb-3">Customize the current theme's output colors. Changes are temporary unless saved as a new preset.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="theme-bg-output-picker" class="slider-label">Output Background:</label>
+                                <input type="color" id="theme-bg-output-picker" name="theme-bg-output" value="#0d1117"> <!-- Default dark -->
+                            </div>
+                            <div>
+                                <label for="theme-text-output-picker" class="slider-label">Output Text:</label>
+                                <input type="color" id="theme-text-output-picker" name="theme-text-output" value="#e2e8f0"> <!-- Default dark -->
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Preset Management Section -->
-                <div class="control-section">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Presets</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div id="preset-controls" class="control-section collapsible collapsed">
+                    <h2 class="control-section-header text-xl font-semibold mb-3 text-gray-100 flex justify-between items-center cursor-pointer">
+                        <span>Presets</span>
+                        <span class="toggle-icon text-gray-400 text-lg">▼</span>
+                    </h2>
+                    <div class="control-section-content">
+                        <!-- Save Preset -->
+                        <div class="mb-4">
+                            <label for="preset-name-input" class="slider-label">Save Current Settings:</label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="preset-name-input" placeholder="Enter preset name..." class="flex-grow">
+                                <button id="savePresetButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded whitespace-nowrap">Save</button>
+                            </div>
+                        </div>
+                        <!-- Load/Delete Preset -->
                         <div>
-                            <label for="presetName" class="block text-sm font-medium text-gray-400 mb-1">Preset Name:</label>
-                            <input type="text" id="presetName" name="presetName" placeholder="Enter preset name..." class="w-full">
-                        </div>
-                        <button id="savePresetButton" class="sm:col-span-1">Save Preset</button>
-                        <div>
-                            <label for="presetLoadSelect" class="block text-sm font-medium text-gray-400 mb-1">Load Preset:</label>
-                            <select id="presetLoadSelect" name="presetLoadSelect" class="w-full">
-                                <option value="">-- Select Preset --</option>
-                                <!-- Options populated by script -->
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 sm:col-span-1">
-                             <button id="loadPresetButton">Load</button>
-                             <button id="deletePresetButton" class="bg-red-700 hover:bg-red-600">Delete</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Lighting Controls Section -->
-                <div id="lighting-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Lighting Controls</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="ambient-intensity-slider" class="slider-label">Ambient Intensity:</label>
-                            <input type="range" id="ambient-intensity-slider" name="ambient-intensity" min="0.0" max="2.0" value="0.5" step="0.05">
-                            <span class="text-sm text-gray-400"><span id="ambient-intensity-value">0.50</span></span>
-                        </div>
-                        <div>
-                            <label for="directional-intensity-slider" class="slider-label">Directional Intensity:</label>
-                            <input type="range" id="directional-intensity-slider" name="directional-intensity" min="0.0" max="5.0" value="1.5" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="directional-intensity-value">1.5</span></span>
-                        </div>
-                        <div>
-                            <label for="light-pos-x-slider" class="slider-label">Light Pos X:</label>
-                            <input type="range" id="light-pos-x-slider" name="light-pos-x" min="-10" max="10" value="5" step="0.5">
-                            <span class="text-sm text-gray-400"><span id="light-pos-x-value">5.0</span></span>
-                        </div>
-                        <div>
-                            <label for="light-pos-y-slider" class="slider-label">Light Pos Y:</label>
-                            <input type="range" id="light-pos-y-slider" name="light-pos-y" min="-10" max="10" value="5" step="0.5">
-                            <span class="text-sm text-gray-400"><span id="light-pos-y-value">5.0</span></span>
-                        </div>
-                        <div>
-                            <label for="light-pos-z-slider" class="slider-label">Light Pos Z:</label>
-                            <input type="range" id="light-pos-z-slider" name="light-pos-z" min="-10" max="10" value="5" step="0.5">
-                            <span class="text-sm text-gray-400"><span id="light-pos-z-value">5.0</span></span>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Animation Specific Controls (Ensure IDs match script.js and modules) -->
-                <div id="torus-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Torus Controls</h2>
-                    <div>
-                        <label for="torus-speed-slider" class="slider-label">Rotation Speed:</label>
-                        <input type="range" id="torus-speed-slider" name="torus-speed" min="0.1" max="3.0" value="1.0" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="torus-speed-value">1.00</span></span>
-                    </div>
-                    <div>
-                        <label for="torus-thickness-slider" class="slider-label">Thickness Ratio:</label>
-                        <input type="range" id="torus-thickness-slider" name="torus-thickness" min="0.1" max="0.9" value="0.3" step="0.05">
-                        <span class="text-sm text-gray-400"><span id="torus-thickness-value">0.30</span></span>
-                    </div>
-                    <div>
-                        <label for="torus-major-radius-slider" class="slider-label">Major Radius:</label>
-                        <input type="range" id="torus-major-radius-slider" name="torus-major-radius" min="1.0" max="5.0" value="3.0" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="torus-major-radius-value">3.0</span></span>
-                    </div>
-                    <div>
-                        <label for="torus-roughness-slider" class="slider-label">Roughness:</label>
-                        <input type="range" id="torus-roughness-slider" name="torus-roughness" min="0.0" max="1.0" value="0.5" step="0.05">
-                        <span class="text-sm text-gray-400"><span id="torus-roughness-value">0.50</span></span>
-                    </div>
-                    <div>
-                        <label for="torus-metalness-slider" class="slider-label">Metalness:</label>
-                        <input type="range" id="torus-metalness-slider" name="torus-metalness" min="0.0" max="1.0" value="0.1" step="0.05">
-                        <span class="text-sm text-gray-400"><span id="torus-metalness-value">0.10</span></span>
-                    </div>
-                     <div>
-                        <label for="torus-color-picker" class="block text-sm font-medium text-gray-400 mb-1">Color:</label>
-                        <input type="color" id="torus-color-picker" name="torus-color" value="#34d399" class="w-full h-10 p-1 border border-gray-600 rounded cursor-pointer">
-                    </div>
-                    <div>
-                        <label for="torus-rotation-axis-select" class="block text-sm font-medium text-gray-400 mb-1">Rotation Axis:</label>
-                        <select id="torus-rotation-axis-select" name="torus-rotation-axis" class="w-full">
-                            <option value="xyz" selected>XYZ (Tumble)</option>
-                            <option value="x">X Axis</option>
-                            <option value="y">Y Axis</option>
-                            <option value="z">Z Axis</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="noise-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Noise Field Controls</h2>
-                    <div>
-                        <label for="noise-scale-slider" class="slider-label">Noise Scale:</label>
-                        <input type="range" id="noise-scale-slider" name="noise-scale" min="1.0" max="20.0" value="5.0" step="0.5">
-                        <span class="text-sm text-gray-400"><span id="noise-scale-value">5.0</span></span>
-                    </div>
-                    <div>
-                        <label for="noise-speed-x-slider" class="slider-label">Speed X:</label>
-                        <input type="range" id="noise-speed-x-slider" name="noise-speed-x" min="0.0" max="2.0" value="0.5" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="noise-speed-x-value">0.5</span></span>
-                    </div>
-                    <div>
-                        <label for="noise-speed-y-slider" class="slider-label">Speed Y:</label>
-                        <input type="range" id="noise-speed-y-slider" name="noise-speed-y" min="0.0" max="2.0" value="0.2" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="noise-speed-y-value">0.2</span></span>
-                    </div>
-                    <div>
-                        <label for="noise-brightness-slider" class="slider-label">Brightness:</label>
-                        <input type="range" id="noise-brightness-slider" name="noise-brightness" min="0.1" max="3.0" value="1.0" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="noise-brightness-value">1.0</span></span>
-                    </div>
-                    <div>
-                        <label for="noise-octaves-slider" class="slider-label">Octaves:</label>
-                        <input type="range" id="noise-octaves-slider" name="noise-octaves" min="1" max="8" value="4" step="1">
-                        <span class="text-sm text-gray-400"><span id="noise-octaves-value">4</span></span>
-                    </div>
-                </div>
-
-                <div id="particles-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Particle System Controls</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="particles-count-slider" class="slider-label">Particle Count:</label>
-                            <input type="range" id="particles-count-slider" name="particles-count" min="100" max="10000" value="2000" step="100">
-                            <span class="text-sm text-gray-400"><span id="particles-count-value">2000</span></span>
-                        </div>
-                        <div>
-                            <label for="particles-size-slider" class="slider-label">Base Size:</label>
-                            <input type="range" id="particles-size-slider" name="particles-size" min="0.1" max="5.0" value="1.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="particle-size-value">1.0</span></span>
-                        </div>
-                        <div>
-                            <label for="particles-speed-slider" class="slider-label">Base Speed:</label>
-                            <input type="range" id="particles-speed-slider" name="particles-speed" min="0.1" max="5.0" value="1.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="particle-speed-value">1.0</span></span>
-                        </div>
-                        <div>
-                            <label for="particles-lifespan-slider" class="slider-label">Lifespan (s):</label>
-                            <input type="range" id="particles-lifespan-slider" name="particles-lifespan" min="1.0" max="10.0" value="4.0" step="0.5">
-                            <span class="text-sm text-gray-400"><span id="particle-lifespan-value">4.0</span></span>
-                        </div>
-                        <div>
-                            <label for="particles-emitter-shape" class="block text-sm font-medium text-gray-400 mb-1">Emitter Shape:</label>
-                            <select id="particles-emitter-shape" name="particles-emitter-shape" class="w-full">
-                                <option value="point" selected>Point</option>
-                                <option value="sphere">Sphere</option>
-                                <option value="box">Box</option>
-                                <option value="disc">Disc</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="particles-emitter-size-slider" class="slider-label">Emitter Size:</label>
-                            <input type="range" id="particles-emitter-size-slider" name="particles-emitter-size" min="0.1" max="10.0" value="1.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="particle-emitter-size-value">1.0</span></span>
-                        </div>
-                        <div>
-                            <label for="particles-force-type" class="block text-sm font-medium text-gray-400 mb-1">Force Type:</label>
-                            <select id="particles-force-type" name="particles-force-type" class="w-full">
-                                <option value="none" selected>None</option>
-                                <option value="flow">Flow Field</option>
-                                <option value="attractor">Attractor</option>
-                                <option value="repulsor">Repulsor</option>
-                                <option value="vortex">Vortex</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="particles-force-strength-slider" class="slider-label">Force Strength:</label>
-                            <input type="range" id="particles-force-strength-slider" name="particles-force-strength" min="0.0" max="5.0" value="1.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="particle-force-strength-value">1.0</span></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="kaleidoscope-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Kaleidoscope Controls</h2>
-                    <div>
-                        <label for="kaleidoscope-segments-slider" class="slider-label">Segments:</label>
-                        <input type="range" id="kaleidoscope-segments-slider" name="kaleidoscope-segments" min="2" max="24" value="6" step="1">
-                        <span class="text-sm text-gray-400"><span id="kaleidoscope-segments-value">6</span></span>
-                    </div>
-                    <div>
-                        <label for="kaleidoscope-noise-scale-slider" class="slider-label">Noise Scale:</label>
-                        <input type="range" id="kaleidoscope-noise-scale-slider" name="kaleidoscope-noise-scale" min="1.0" max="20.0" value="4.0" step="0.5">
-                        <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-scale-value">4.0</span></span>
-                    </div>
-                    <div>
-                        <label for="kaleidoscope-noise-speed-x-slider" class="slider-label">Noise Speed X:</label>
-                        <input type="range" id="kaleidoscope-noise-speed-x-slider" name="kaleidoscope-noise-speed-x" min="0.0" max="2.0" value="0.5" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-speed-x-value">0.5</span></span>
-                    </div>
-                     <div>
-                        <label for="kaleidoscope-noise-speed-y-slider" class="slider-label">Noise Speed Y:</label>
-                        <input type="range" id="kaleidoscope-noise-speed-y-slider" name="kaleidoscope-noise-speed-y" min="0.0" max="2.0" value="0.2" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-speed-y-value">0.2</span></span>
-                    </div>
-                    <div>
-                        <label for="kaleidoscope-noise-brightness-slider" class="slider-label">Noise Brightness:</label>
-                        <input type="range" id="kaleidoscope-noise-brightness-slider" name="kaleidoscope-noise-brightness" min="0.1" max="3.0" value="1.0" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="kaleidoscope-noise-brightness-value">1.0</span></span>
-                    </div>
-                </div>
-
-                <div id="morph-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Shape Morph Controls</h2>
-                    <div>
-                        <label for="morph-speed-slider" class="slider-label">Morph Speed:</label>
-                        <input type="range" id="morph-speed-slider" name="morph-speed" min="0.1" max="3.0" value="1.0" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="morph-speed-value">1.0</span></span>
-                    </div>
-                    <div>
-                        <label for="morph-rotation-slider" class="slider-label">Rotation Speed:</label>
-                        <input type="range" id="morph-rotation-slider" name="morph-rotation" min="0.0" max="2.0" value="0.5" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="morph-rotation-speed-value">0.5</span></span>
-                    </div>
-                    <div>
-                        <label for="morph-complexity-slider" class="slider-label">Complexity:</label>
-                        <input type="range" id="morph-complexity-slider" name="morph-complexity" min="8" max="128" value="32" step="4">
-                        <span class="text-sm text-gray-400"><span id="morph-complexity-value">32</span></span>
-                    </div>
-                     <div>
-                        <label for="morph-color-picker" class="block text-sm font-medium text-gray-400 mb-1">Color:</label>
-                        <input type="color" id="morph-color-picker" name="morph-color" value="#00ffaa" class="w-full h-10 p-1 border border-gray-600 rounded cursor-pointer">
-                    </div>
-                </div>
-
-                <div id="metaballs-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Metaballs Controls</h2>
-                     <div>
-                        <label for="metaballs-count-slider" class="slider-label">Ball Count:</label>
-                        <input type="range" id="metaballs-count-slider" name="mb-count" min="1" max="25" value="10" step="1">
-                        <span class="text-sm text-gray-400"><span id="mb-count-value">10</span></span>
-                    </div>
-                     <div>
-                        <label for="metaballs-size-slider" class="slider-label">Base Size:</label>
-                        <input type="range" id="metaballs-size-slider" name="mb-size" min="0.1" max="2.0" value="0.5" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="mb-size-value">0.5</span></span>
-                    </div>
-                     <div>
-                        <label for="metaballs-speed-slider" class="slider-label">Speed:</label>
-                        <input type="range" id="metaballs-speed-slider" name="mb-speed" min="0.0" max="5.0" value="1.0" step="0.1">
-                        <span class="text-sm text-gray-400"><span id="mb-speed-value">1.0</span></span>
-                    </div>
-                     <div>
-                        <label for="metaballs-threshold-slider" class="slider-label">Threshold:</label>
-                        <input type="range" id="metaballs-threshold-slider" name="mb-threshold" min="0.1" max="2.0" value="0.8" step="0.05">
-                        <span class="text-sm text-gray-400"><span id="mb-threshold-value">0.80</span></span>
-                    </div>
-                     <div>
-                        <label for="metaballs-color-slider" class="slider-label">Color Blend:</label>
-                        <input type="range" id="metaballs-color-slider" name="mb-color" min="0.0" max="1.0" value="0.5" step="0.01">
-                        <span class="text-sm text-gray-400"><span id="mb-color-value">0.50</span></span>
-                    </div>
-                </div>
-
-                <div id="lissajous-controls" class="control-section animation-controls">
-                    <h2 class="text-xl font-semibold mb-3 text-gray-100">Lissajous Controls</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="lissajous-a-slider" class="slider-label">Frequency A:</label>
-                            <input type="range" id="lissajous-a-slider" name="lj-a" min="1" max="12" value="3" step="1">
-                            <span class="text-sm text-gray-400"><span id="lj-a-value">3</span></span>
-                        </div>
-                        <div>
-                            <label for="lissajous-b-slider" class="slider-label">Frequency B:</label>
-                            <input type="range" id="lissajous-b-slider" name="lj-b" min="1" max="12" value="2" step="1">
-                            <span class="text-sm text-gray-400"><span id="lj-b-value">2</span></span>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label for="lissajous-delta-slider" class="slider-label">Phase Delta:</label>
-                            <input type="range" id="lissajous-delta-slider" name="lj-delta" min="0" max="6.28318" value="1.57079" step="0.00001"> <!-- Approx PI/2 -->
-                            <span class="text-sm text-gray-400"><span id="lj-delta-value">0.50 PI</span></span>
-                        </div>
-                        <div>
-                            <label for="lissajous-ampA-slider" class="slider-label">Amplitude A:</label>
-                            <input type="range" id="lissajous-ampA-slider" name="lj-ampA" min="0.5" max="5.0" value="3.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="lj-ampA-value">3.0</span></span>
-                        </div>
-                        <div>
-                            <label for="lissajous-ampB-slider" class="slider-label">Amplitude B:</label>
-                            <input type="range" id="lissajous-ampB-slider" name="lj-ampB" min="0.5" max="5.0" value="3.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="lj-ampB-value">3.0</span></span>
-                        </div>
-                        <div>
-                            <label for="lissajous-speed-slider" class="slider-label">Drawing Speed:</label>
-                            <input type="range" id="lissajous-speed-slider" name="lj-speed" min="0.1" max="5.0" value="1.0" step="0.1">
-                            <span class="text-sm text-gray-400"><span id="lj-speed-value">1.0</span></span>
-                        </div>
-                        <div>
-                            <label for="lissajous-points-slider" class="slider-label">Trail Length:</label>
-                            <input type="range" id="lissajous-points-slider" name="lj-points" min="100" max="5000" value="1000" step="100">
-                            <span class="text-sm text-gray-400"><span id="lj-points-value">1000</span></span>
+                            <label for="preset-load-select" class="slider-label">Load/Delete Preset:</label>
+                            <div class="flex space-x-2">
+                                <select id="preset-load-select" class="flex-grow">
+                                    <option value="" disabled selected>Select a preset...</option>
+                                </select>
+                                <button id="loadPresetButton" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded whitespace-nowrap">Load</button>
+                                <button id="deletePresetButton" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded whitespace-nowrap">Delete</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -411,8 +166,8 @@
 
     <!-- Load Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/libs/simplex-noise.min.js"></script> <!-- Use local copy -->
-    <script src="js/libs/gif.js"></script> <!-- GIF Encoder -->
+    <script src="https://cdn.jsdelivr.net/npm/simplex-noise@3.0.0/dist/simplex-noise.min.js"></script>
+    <script src="js/lib/gif.js/gif.js"></script>
 
     <!-- Load Animation Modules -->
     <script src="js/animations/torus.js"></script>

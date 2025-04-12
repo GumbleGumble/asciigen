@@ -1,210 +1,184 @@
-// Torus Animation
+// Torus Animation Module
 
 // Expose module methods
 window.TORUS_ANIMATION = {
-	setup: setupTorusAnimation,
-	update: updateTorusAnimation,
-	cleanup: cleanupTorusAnimation,
-	randomize: randomizeTorusParameters,
-	handleThicknessChange: handleTorusThicknessChange,
-	handleMajorRadiusChange: handleTorusMajorRadiusChange, // Added
-	handleRotationAxisChange: () => {}, // No specific handler needed, read in update
-	handleMaterialChange: handleTorusMaterialChange, // Added
-	handleColorChange: handleTorusColorChange, // Added color handler
-	handleSpeedChange: () => {}, // No specific handler needed, read in update
+    setup: setupTorusAnimation,
+    update: updateTorusAnimation,
+    cleanup: cleanupTorusAnimation,
+    randomize: randomizeTorusParameters,
+    handleThicknessChange: handleTorusGeometryChange, // Handler for geometry changes
+    handleMajorRadiusChange: handleTorusGeometryChange, // Handler for geometry changes
+    handleMaterialChange: handleTorusParamChange, // Handler for material changes (roughness, metalness)
+    handleColorChange: handleTorusParamChange, // Handler for color changes
+    handleRotationAxisChange: () => { /* Axis read in update loop */ }, // No immediate action needed
+    handleSpeedChange: () => { updateAllValueDisplays(); }, // Just update label
 };
 
+// --- Setup ---
 function setupTorusAnimation() {
-	console.log("Setting up Torus animation");
-
-	// Get parameters
-	const thicknessRatio = Number.parseFloat(torusControls.sliderThickness.value);
-	const majorRadius = Number.parseFloat(uiElements.torusMajorRadius.value); // Use uiElements directly
-	const roughness = Number.parseFloat(torusControls.sliderRoughness.value);
-	const metalness = Number.parseFloat(torusControls.sliderMetalness.value);
-	const initialColor = uiElements.torusColorPicker ? uiElements.torusColorPicker.value : '#6495ed'; // Get initial color
-
-	// Update UI labels - Handled by script.js updateAllValueDisplays
-	// torusControls.valueThickness.textContent = thicknessRatio.toFixed(2);
-	// if (uiElements.torusMajorRadiusValue)
-	// 	uiElements.torusMajorRadiusValue.textContent = majorRadius.toFixed(1);
-	// if (uiElements.torusRoughnessValue)
-	// 	uiElements.torusRoughnessValue.textContent = roughness.toFixed(2);
-	// if (uiElements.torusMetalnessValue)
-	// 	uiElements.torusMetalnessValue.textContent = metalness.toFixed(2);
-	// if (uiElements.torusSpeedValue)
-	// 	uiElements.torusSpeedValue.textContent = Number.parseFloat(
-	// 		torusControls.sliderSpeed.value,
-	// 	).toFixed(2);
-
-	// Create torus geometry with adjustable thickness and radius
-	// Parameters: radius, tube radius, radial segments, tubular segments
-	const tubeRadius = majorRadius * thicknessRatio;
-	const geometry = new THREE.TorusGeometry(majorRadius, tubeRadius, 32, 100); // Increased segments
-
-	// Create material with adjustable properties
-	const material = new THREE.MeshStandardMaterial({
-		color: initialColor, // Use initial color
-		roughness: roughness,
-		metalness: metalness,
-		flatShading: false,
-	});
-
-	// Create mesh and add to scene
-	const torus = new THREE.Mesh(geometry, material);
-	torus.name = "torusMesh";
-	scene.add(torus);
-
-	// Store references for animation updates
-	animationObjects.torus = torus;
-	animationObjects.geometry = geometry; // Store geometry reference for potential disposal
-	animationObjects.material = material; // Store material reference
-
-	// Add event listener for color picker (ensure it's added correctly)
-	if (uiElements.torusColorPicker) {
-        // Remove previous listener if any to avoid duplicates
-        uiElements.torusColorPicker.removeEventListener('input', handleTorusColorChange);
-		uiElements.torusColorPicker.addEventListener('input', handleTorusColorChange);
-	}
-
-    // Ensure initial labels are correct after setup
-    updateAllValueDisplays(); // Call global update to sync labels
-}
-
-function cleanupTorusAnimation() {
-	console.log("Cleaning up Torus animation");
-	if (animationObjects.torus) {
-		scene.remove(animationObjects.torus);
-		// Dispose geometry and material
-		if (animationObjects.geometry) animationObjects.geometry.dispose();
-		if (animationObjects.material) animationObjects.material.dispose();
-	}
-	// Remove color picker listener during cleanup
-	if (uiElements.torusColorPicker) {
-		uiElements.torusColorPicker.removeEventListener('input', handleTorusColorChange);
-	}
-	// Clear animationObjects specific to torus
-	animationObjects.torus = null;
-	animationObjects.geometry = null;
-	animationObjects.material = null;
-}
-
-// Handles changes that require recreating the geometry
-function handleTorusGeometryChange() {
-	if (currentAnimationType !== "torus" || !animationObjects.torus) return; // Use currentAnimationType
-
-	// Get current parameters
-	const thicknessRatio = Number.parseFloat(torusControls.sliderThickness.value);
-	const majorRadius = Number.parseFloat(uiElements.torusMajorRadius.value);
-
-	// Update UI - Handled by script.js listener
-	// torusControls.valueThickness.textContent = thicknessRatio.toFixed(2);
-	// if (uiElements.torusMajorRadiusValue)
-	// 	uiElements.torusMajorRadiusValue.textContent = majorRadius.toFixed(1);
-
-	// Dispose old geometry
-	if (animationObjects.geometry) animationObjects.geometry.dispose();
-
-	// Create new geometry
-	const tubeRadius = majorRadius * thicknessRatio;
-	const newGeometry = new THREE.TorusGeometry(majorRadius, tubeRadius, 32, 100);
-
-	// Update mesh
-	animationObjects.torus.geometry = newGeometry;
-
-	// Update stored geometry reference
-	animationObjects.geometry = newGeometry;
-}
-
-// Specific handler for thickness
-function handleTorusThicknessChange() {
-	handleTorusGeometryChange();
-}
-
-// Specific handler for major radius
-function handleTorusMajorRadiusChange() {
-	handleTorusGeometryChange();
-}
-
-// Handles changes to material properties
-function handleTorusMaterialChange() {
-	// Check if currentAnimationType is defined globally (from script.js)
-	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "torus" || !animationObjects.material) return; // Use currentAnimationType
-
-	const roughness = Number.parseFloat(torusControls.sliderRoughness.value);
-	const metalness = Number.parseFloat(torusControls.sliderMetalness.value);
-
-	// Update UI - Handled by script.js listener calling updateAllValueDisplays
-	// ...
-
-	// Update material properties
-	animationObjects.material.roughness = roughness;
-	animationObjects.material.metalness = metalness;
-	animationObjects.material.needsUpdate = true; // Important for some material changes
-}
-
-// Handles changes to color property
-function handleTorusColorChange(event) { // Can accept event argument
-	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== "torus" || !animationObjects.material || !event?.target) {
-        // console.warn("handleTorusColorChange prerequisites not met.");
+    console.log("Setting up Torus animation");
+    // Ensure controls exist
+    if (!torusControls || !torusControls.sliderThickness || !uiElements.torusMajorRadius || !torusControls.sliderRoughness || !torusControls.sliderMetalness || !uiElements.torusColorPicker) {
+        console.error("Torus controls not found!");
         return;
     }
-    try {
-        const newColor = event.target.value; // Get value from the event target
-        // console.log("Torus color changed:", newColor); // Debug log
-	    animationObjects.material.color.set(newColor); // Set the color on the material
-    } catch (error) {
-        console.error("Error setting torus color:", error);
-    }
+
+    // Get initial parameters
+    const radius = Number.parseFloat(uiElements.torusMajorRadius.value) || 3;
+    const tube = Number.parseFloat(torusControls.sliderThickness.value) || 1;
+    const radialSegments = 16; // Lower for performance
+    const tubularSegments = 64; // Lower for performance
+    const roughness = Number.parseFloat(torusControls.sliderRoughness.value) || 0.5;
+    const metalness = Number.parseFloat(torusControls.sliderMetalness.value) || 0.5;
+    const color = uiElements.torusColorPicker.value || '#ff00ff';
+
+    // Create geometry
+    const geometry = new THREE.TorusKnotGeometry(radius, tube, tubularSegments, radialSegments); // Use TorusKnot for more interest
+
+    // Create material
+    const material = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: roughness,
+        metalness: metalness,
+        // wireframe: true // Optional: for debugging
+    });
+
+    // Create mesh
+    const torus = new THREE.Mesh(geometry, material);
+    torus.name = "torusKnot";
+    scene.add(torus);
+
+    // Store references
+    animationObjects.torus = torus;
+    animationObjects.geometry = geometry; // Store geometry reference
+    animationObjects.material = material; // Store material reference
+
+    // Add listeners (handled in script.js)
+    // uiElements.torusThickness.addEventListener('input', handleTorusGeometryChange);
+    // uiElements.torusMajorRadius.addEventListener('input', handleTorusGeometryChange);
+    // uiElements.torusRoughness.addEventListener('input', handleTorusParamChange);
+    // uiElements.torusMetalness.addEventListener('input', handleTorusParamChange);
+    // uiElements.torusColorPicker.addEventListener('input', handleTorusParamChange);
+    // uiElements.torusRotationAxis.addEventListener('change', handleTorusParamChange); // Axis read in update
+    // uiElements.torusSpeed.addEventListener('input', handleTorusParamChange); // Speed read in update
+
+    updateAllValueDisplays(); // Call explicitly after setup
 }
+
+// --- Cleanup ---
+function cleanupTorusAnimation() {
+    console.log("Cleaning up Torus animation");
+    if (animationObjects.torus) {
+        scene.remove(animationObjects.torus);
+        animationObjects.geometry?.dispose(); // Use optional chaining
+        animationObjects.material?.dispose(); // Use optional chaining
+    }
+    // Remove listeners (handled in script.js)
+    // ...
+    animationObjects.torus = null;
+    animationObjects.geometry = null;
+    animationObjects.material = null;
+}
+
+// --- Handlers ---
+
+// Handler for geometry changes (Thickness, Major Radius)
+function handleTorusGeometryChange() {
+    // Check if currentAnimationType is defined globally (from script.js)
+	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'torus' || !animationObjects.torus) return;
+    console.log("Handling Torus geometry change");
+
+    // Ensure controls exist
+    if (!torusControls.sliderThickness || !uiElements.torusMajorRadius) {
+         console.error("Torus geometry controls not found!");
+         return;
+    }
+
+    // Get new parameters
+    const newRadius = Number.parseFloat(uiElements.torusMajorRadius.value);
+    const newTube = Number.parseFloat(torusControls.sliderThickness.value);
+    const radialSegments = 16; // Keep consistent
+    const tubularSegments = 64; // Keep consistent
+
+    // Dispose old geometry
+    animationObjects.geometry?.dispose();
+
+    // Create new geometry
+    try {
+        animationObjects.geometry = new THREE.TorusKnotGeometry(newRadius, newTube, tubularSegments, radialSegments);
+        animationObjects.torus.geometry = animationObjects.geometry; // Assign new geometry to mesh
+        console.log(`Torus geometry updated: R=${newRadius}, T=${newTube}`);
+    } catch (error) {
+        console.error("Error creating new torus geometry:", error);
+        // Handle error, maybe revert to old geometry or default?
+    }
+
+    // UI label updates are handled by the main script's event listeners calling updateAllValueDisplays
+}
+
+// Unified handler for other parameter changes (Speed, Roughness, Metalness, Axis, Color)
+function handleTorusParamChange() {
+    // Check if currentAnimationType is defined globally (from script.js)
+	if (typeof currentAnimationType === 'undefined' || currentAnimationType !== 'torus' || !animationObjects.material) return;
+    // console.log("Handling Torus parameter change (non-geometry)"); // Debug log
+
+    // Ensure controls exist
+    if (!torusControls.sliderRoughness || !torusControls.sliderMetalness || !uiElements.torusColorPicker) {
+         console.error("Torus material/color controls not found!");
+         return;
+    }
+
+    // Update material properties
+    animationObjects.material.roughness = Number.parseFloat(torusControls.sliderRoughness.value);
+    animationObjects.material.metalness = Number.parseFloat(torusControls.sliderMetalness.value);
+    animationObjects.material.color.set(uiElements.torusColorPicker.value); // Update color
+
+    // Speed and Axis are read directly in the update loop
+    // UI label updates are handled by the main script's event listeners calling updateAllValueDisplays
+}
+
 
 function updateTorusAnimation(deltaTime, elapsedTime) {
-	if (!animationObjects.torus || !torusControls.sliderSpeed || !uiElements.torusRotationAxis) {
-        // console.warn("Torus update prerequisites not met.");
-        return;
-    }
-    // Ensure deltaTime is a valid, positive number before clamping
-    const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? Math.min(deltaTime, 0.05) : (1/60); // Use fallback if deltaTime is invalid
+    if (!animationObjects.torus || !torusControls.sliderSpeed || !uiElements.torusRotationAxis) return;
 
-	// Get rotation speed and axis from controls
-	const rotationSpeed = Number.parseFloat(torusControls.sliderSpeed.value);
-	const rotationAxis = uiElements.torusRotationAxis.value;
+    const speed = Number.parseFloat(torusControls.sliderSpeed.value);
+    const axis = uiElements.torusRotationAxis.value;
+    // Ensure deltaTime is valid, provide fallback
+    const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? Math.min(deltaTime, 0.05) : (1/60);
 
-    // Check if speed is non-zero
-    if (Math.abs(rotationSpeed) < 0.001) {
-        // console.log("Torus rotation speed is near zero."); // Debug log
-        return; // No rotation needed if speed is zero
-    }
+    // Apply rotation based on selected axis and speed
+    const rotationAmount = dt * speed;
 
-	// Apply rotation based on selected axis
-	const rotationAmount = dt * rotationSpeed;
-
-    // --- Debug Log ---
-    // console.log(`Torus Update - dt: ${dt.toFixed(4)}, speed: ${rotationSpeed}, axis: ${rotationAxis}, amount: ${rotationAmount.toFixed(4)}`); // Uncomment for debugging
-
-	switch (rotationAxis) {
-		case "x":
-			animationObjects.torus.rotation.x += rotationAmount;
-			break;
-		case "y":
-			animationObjects.torus.rotation.y += rotationAmount;
-			break;
-		case "z":
-			animationObjects.torus.rotation.z += rotationAmount;
-			break;
-		case "xy":
-			animationObjects.torus.rotation.x += rotationAmount * Math.SQRT1_2;
-			animationObjects.torus.rotation.y += rotationAmount * Math.SQRT1_2;
-			break;
-        case "xyz":
-            animationObjects.torus.rotation.x += rotationAmount * 0.577; // Approx 1/sqrt(3)
+    switch (axis) {
+        case 'x':
+            animationObjects.torus.rotation.x += rotationAmount;
+            break;
+        case 'y':
+            animationObjects.torus.rotation.y += rotationAmount;
+            break;
+        case 'z':
+            animationObjects.torus.rotation.z += rotationAmount;
+            break;
+        case 'xy':
+            animationObjects.torus.rotation.x += rotationAmount * 0.707;
+            animationObjects.torus.rotation.y += rotationAmount * 0.707;
+            break;
+        case 'xz':
+            animationObjects.torus.rotation.x += rotationAmount * 0.707;
+            animationObjects.torus.rotation.z += rotationAmount * 0.707;
+            break;
+        case 'yz':
+            animationObjects.torus.rotation.y += rotationAmount * 0.707;
+            animationObjects.torus.rotation.z += rotationAmount * 0.707;
+            break;
+        case 'xyz':
+            animationObjects.torus.rotation.x += rotationAmount * 0.577;
             animationObjects.torus.rotation.y += rotationAmount * 0.577;
             animationObjects.torus.rotation.z += rotationAmount * 0.577;
             break;
-		default: // Default to Y
-			animationObjects.torus.rotation.y += rotationAmount;
-	}
-    // Keep rotations within reasonable bounds (optional, helps prevent potential precision issues)
+    }
+
+    // Keep rotation within 0 to 2*PI range (optional, helps prevent large numbers)
     animationObjects.torus.rotation.x %= (Math.PI * 2);
     animationObjects.torus.rotation.y %= (Math.PI * 2);
     animationObjects.torus.rotation.z %= (Math.PI * 2);
@@ -212,32 +186,28 @@ function updateTorusAnimation(deltaTime, elapsedTime) {
 
 function randomizeTorusParameters() {
 	console.log("Randomizing Torus parameters...");
-	const controls = [
+	const controlsToRandomize = [
 		torusControls.sliderSpeed,
 		torusControls.sliderThickness,
-		uiElements.torusMajorRadius, // Use uiElements directly
+		uiElements.torusMajorRadius,
 		torusControls.sliderRoughness,
 		torusControls.sliderMetalness,
-		uiElements.torusRotationAxis, // Use uiElements directly
-		uiElements.torusColorPicker, // Add color picker
+		uiElements.torusRotationAxis,
+        uiElements.torusColorPicker, // Include color picker
 	];
 
-	for (const control of controls) {
-		if (!control) continue; // Skip if element not found
+	for (const control of controlsToRandomize) {
+		if (!control) continue;
 
 		if (control.type === "range") {
 			const min = Number.parseFloat(control.min);
 			const max = Number.parseFloat(control.max);
-			const step = Number.parseFloat(control.step) || 0.01; // Default step
+			const step = Number.parseFloat(control.step) || 0.1;
 			const range = max - min;
-			// Ensure calculations handle potential floating point inaccuracies
-            const randomValue = min + Math.random() * range;
-            // Round to the nearest step
-            const steppedValue = Math.round(randomValue / step) * step;
-            // Clamp to min/max and fix precision
+			const randomValue = min + Math.random() * range;
+			const steppedValue = Math.round(randomValue / step) * step;
             const precision = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
             control.value = Math.min(max, Math.max(min, steppedValue)).toFixed(precision);
-
 			// Dispatch event to trigger handlers (like geometry/material updates)
 			control.dispatchEvent(new Event("input", { bubbles: true }));
 		} else if (control.tagName === "SELECT") {
@@ -251,15 +221,5 @@ function randomizeTorusParameters() {
 			control.dispatchEvent(new Event("input", { bubbles: true })); // Trigger color change handler
 		}
 	}
-	// Geometry and material changes are handled by the 'input'/'change' event handlers triggered above
-	// UI label updates are also handled by the listeners triggered by the events.
-	// Explicitly call updateAllValueDisplays from script.js after randomization if needed,
-	// but the dispatched events should cover it.
-    // Ensure color picker randomization triggers the input event
-    const colorPicker = uiElements.torusColorPicker;
-    if (colorPicker) {
-        const randomColor = new THREE.Color(Math.random(), Math.random(), Math.random());
-        colorPicker.value = `#${randomColor.getHexString()}`;
-        colorPicker.dispatchEvent(new Event("input", { bubbles: true })); // Trigger color change handler
-    }
+	// updateAllValueDisplays(); // Called by the dispatched events via script.js listeners
 }
